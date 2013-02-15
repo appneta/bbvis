@@ -27,8 +27,13 @@ function getListeners(obj) {
         var curr = ll.next;
         while (true) {
             if (curr && curr.context) {
-                if (getObj(curr.context)) {
-                    listeners.push(getObj(curr.context));
+                var listener = getObj(curr.context);
+                /**
+                 * Don't publish event binding of collections to their
+                 * own models; this happens automatically in backbone.
+                 **/
+                if (listener && listener !== obj.collection) {
+                    listeners.push(listener);
                 }
                 curr = curr.next;
             } else {
