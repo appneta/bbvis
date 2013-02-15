@@ -254,9 +254,13 @@ function createGraph(opts) {
         layout.nodes(activeModels).edges(activeLinks);
         layout.run();
 
-        widthadjcenter = 0.5 * ($('body').outerWidth() - _.reduce(activeModels, function(memo, node) {
+        var bodyWidth = $('body').outerWidth();
+        var treeWidth = _.reduce(activeModels, function(memo, node) {
             return Math.max(memo, node.dagre.x + node.width);
-        }, 0));
+        }, 0);
+        widthadjcenter = 0.5 * Math.max(0, bodyWidth - treeWidth);
+
+        svg.attr('width', Math.max(treeWidth, bodyWidth) + 'px');
 
         var linksDelta = selectLinks().data(activeLinks, function(d) { return d.source.id + '-' + d.target.id; });
         linksDelta.exit().classed("remove", true).transition().delay(1000).remove();
