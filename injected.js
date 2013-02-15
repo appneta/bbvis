@@ -55,8 +55,11 @@ function init() {
         }
         m.id = getId(obj);
         m.name = getName(obj);
+        m.waiting = !!getObj(obj).waiting;
+        try {
+            m.data = JSON.stringify(getObj(obj).data);
+        } catch(e) {}
         var str = JSON.stringify(m);
-
         // Don't send data that is already up-to-date
         if (lastmsg[m.id] !== str) {
             lastmsg[m.id] = str;
@@ -164,7 +167,12 @@ function init() {
     });
 
     wrap(Backbone.Model.prototype, 'set', function () {
-        if (getObj(this)) { ping(getObj(this)); }
+        if (getObj(this)) {
+            getObj(this).data = this.toJSON();
+            ping(getObj(this));
+            getObj(this).waiting = false;
+            setDirty(getObj(this));
+        }
     });
 
     // Use the call to _configure during View construction to wrap render
