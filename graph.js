@@ -48,8 +48,6 @@ function createGraph(opts) {
         .edges(linksList);
 
     var svg = d3.select(opts.el).append("svg:svg")
-        .attr("width", '100%')
-        .attr("height", '100%')
         .classed('tbonevis', true);
 
     // Per-type markers, as they don't inherit styles.
@@ -258,9 +256,13 @@ function createGraph(opts) {
         var treeWidth = _.reduce(activeModels, function(memo, node) {
             return Math.max(memo, node.dagre.x + node.width);
         }, 0);
+        var treeHeight = _.reduce(activeModels, function(memo, node) {
+            return Math.max(memo, node.dagre.y + node.height);
+        }, 0);
         widthadjcenter = 0.5 * Math.max(0, bodyWidth - treeWidth);
 
         svg.attr('width', Math.max(treeWidth, bodyWidth) + 'px');
+        svg.attr('height', treeHeight + 'px');
 
         var linksDelta = selectLinks().data(activeLinks, function(d) { return d.source.id + '-' + d.target.id; });
         linksDelta.exit().classed("remove", true).transition().delay(1000).remove();
