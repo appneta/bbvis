@@ -231,6 +231,16 @@ function createGraph(opts) {
         hovered = [];
     }
 
+    var clicked;
+    function updateClickedText() {
+        var data = clicked && clicked.data ? JSON.parse(clicked.data) : null;
+        $('#inspect').text(JSON.stringify(data, null, 2));
+    }
+    function click(node) {
+        clicked = node;
+        updateClickedText();
+    }
+
     var objects = [];
     var models = [];
     var activeModels = [];
@@ -243,7 +253,7 @@ function createGraph(opts) {
                 var listener = objects[listenerid];
                 return list.concat(listener.isView ? [ listener ] : []);
             }, []);
-            d.text = d.name + (d.viewListeners.length ? ' (' + d.viewListeners.length + ')' : '');
+            d.text = ' ' + d.name + (d.viewListeners.length ? ' (' + d.viewListeners.length + ')' : '') + ' ';
             d.textwidth = Math.max(0, textWidth(d.text) - RADIUS); // - RADIUS just gives a little room for rounded corners
             d.width = d.textwidth + 4 + RADIUS * 2;
             d.height = 4 + RADIUS * 2;
@@ -297,6 +307,7 @@ function createGraph(opts) {
             })
             .on('mouseover', mousein)
             .on('mouseout', mouseout)
+            .on('click', click)
             .each(function(d) { d.el = this; })
             .html(function(d) {
                 var $this = $(this);
@@ -345,6 +356,8 @@ function createGraph(opts) {
         // });
 
         refreshLocsNow();
+
+        updateClickedText();
     }, 200);
 
     var textWidths = {};
