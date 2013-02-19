@@ -98,6 +98,10 @@ path.link.hover-upstream, path.link.hover-downstream {
   fill: #9dd;
 }
 
+.node.selected {
+  fill: #0e0 !important;
+}
+
 .tbonevis text, .tbonevis-width-test {
   font-family: Helvetica, Arial, sans serif;
   font-size: 10px;

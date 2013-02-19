@@ -234,11 +234,20 @@ function createGraph(opts) {
     var clicked;
     function updateClickedText() {
         var data = clicked && clicked.data ? JSON.parse(clicked.data) : null;
-        $('#inspect').text(JSON.stringify(data, null, 2));
+        var noDataMsg = "select a model to see its data";
+        $('#inspect').text(data === null ? noDataMsg : JSON.stringify(data, null, 2));
     }
     function click(node) {
-        clicked = node;
+        var oldClicked = clicked ? getNodeElements(clicked) : [];
+        _.each(oldClicked, function(el) {
+            removeClass(el, 'selected');
+        });
+        clicked = node === clicked ? null : node;
         updateClickedText();
+        var newClicked = clicked ? getNodeElements(clicked) : [];
+        _.each(newClicked, function(el) {
+            addClass(el, 'selected');
+        });
     }
 
     var objects = [];
@@ -285,6 +294,9 @@ function createGraph(opts) {
         modelDelta.exit()
             .each(function(d) {
                 $(this).tooltip('destroy');
+                if (clicked === d) {
+                    clicked = null;
+                }
             })
             .classed("remove", true)
             .transition()

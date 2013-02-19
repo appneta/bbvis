@@ -166,11 +166,11 @@ function init() {
         }
     });
 
-    wrap(Backbone.Model.prototype, 'set', function () {
+    wrap(Backbone.Model.prototype, 'set', function () {}, function () {
         if (getObj(this)) {
+            getObj(this).waiting = false;
             getObj(this).data = this.toJSON();
             ping(getObj(this));
-            getObj(this).waiting = false;
             setDirty(getObj(this));
         }
     });
