@@ -8,6 +8,14 @@ between complex applications with many interdependent models and views.
 BBVis was built specifically for use with TBone, but should work with regular
 Backbone apps within the limitations below.
 
+## Installation
+
+- Open chrome://extensions
+- Enable Developer Mode
+- Select `Load unpacked extension...`
+- Find and select this `bbvis` folder
+- (Re-)open the developer tools console; there should be a new BBVis tab.
+
 ## TODO
 
 - View render highlighting is not yet imported from pre-extension implementation.
