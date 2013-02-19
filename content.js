@@ -32,4 +32,4 @@ chrome.extension.onConnect.addListener(function(port) {
     });
 });
 
-console.log('content.js loaded');
+// console.log('content.js loaded');
