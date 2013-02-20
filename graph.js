@@ -232,10 +232,15 @@ function createGraph(opts) {
     }
 
     var clicked;
+    var oldClickedText;
     function updateClickedText() {
         var data = clicked && clicked.data ? JSON.parse(clicked.data) : null;
         var noDataMsg = "select a model to see its data";
-        $('#inspect').text(data === null ? noDataMsg : JSON.stringify(data, null, 2));
+        var newText = data === null ? noDataMsg : JSON.stringify(data, null, 2);
+        if (oldClickedText !== newText) {
+            oldClickedText = newText
+            $('#inspect').text(newText);
+        }
     }
     function click(node) {
         var oldClicked = clicked ? getNodeElements(clicked) : [];
@@ -455,6 +460,7 @@ function createGraph(opts) {
                     removeClass($el[0], 'ping');
                 }, 400);
             }, 1);
+            updateClickedText();
         }
     };
 }
