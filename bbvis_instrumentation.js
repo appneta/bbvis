@@ -152,7 +152,7 @@ function init() {
         var id = getId(obj);
         dirty[id] = force;
         if (!cleanTimer) {
-            cleanTimer = setTimeout(clean, 60);
+            cleanTimer = setTimeout(clean, 20);
         }
     }
 
@@ -178,7 +178,15 @@ function init() {
         cleanTimer = null;
         var num = 0;
         var numSent = 0;
+        var cleaned = [];
+        var t = new Date().getTime();
         for (var id in dirty) {
+            if (new Date().getTime() - t > 1) {
+                if (!cleanTimer) {
+                    cleanTimer = setTimeout(clean, 1);
+                }
+                break;
+            }
             num++;
             var obj = objs[id];
             var parallel = getObjParallel(obj);
@@ -191,9 +199,12 @@ function init() {
                     numSent++;
                 }
             }
+            cleaned.push(id);
+        }
+        for (var i = 0; i < cleaned.length; i++) {
+            delete dirty[cleaned[i]];
         }
         // console.log('cleaned ' + num + ', sent ' + numSent);
-        dirty = {};
     }
 
 
