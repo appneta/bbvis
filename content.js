@@ -28,7 +28,7 @@ chrome.extension.onConnect.addListener(function(port) {
     });
     port.onMessage.addListener(function(msg) {
         // window.postMessage({ msg: msg }, "*");
-        console.log('bbvis:', msg);
+        // console.log('bbvis:', msg);
     });
 });
 

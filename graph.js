@@ -103,8 +103,9 @@ function createGraph(opts) {
         return (d.dagre.x || 0) + widthadjcenter;
     }
 
+    var PADDING_TOP = 6;
     function y(d) {
-        return d.dagre.y || 0;
+        return d.dagre.y || 0 + PADDING_TOP;
     }
 
     function loc(d) {
@@ -276,16 +277,16 @@ function createGraph(opts) {
         layout.nodes(activeModels).edges(activeLinks);
         layout.run();
 
-        var bodyWidth = $('body').outerWidth();
+        var graphWidth = $('#graph').outerWidth();
         var treeWidth = _.reduce(activeModels, function(memo, node) {
             return Math.max(memo, node.dagre.x + node.width);
         }, 0);
         var treeHeight = _.reduce(activeModels, function(memo, node) {
             return Math.max(memo, node.dagre.y + node.height);
         }, 0);
-        widthadjcenter = 0.5 * Math.max(0, bodyWidth - treeWidth);
+        widthadjcenter = 0.5 * Math.max(0, graphWidth - treeWidth);
 
-        svg.attr('width', Math.max(treeWidth, bodyWidth) + 'px');
+        svg.attr('width', Math.max(treeWidth, graphWidth) + 'px');
         svg.attr('height', treeHeight + 'px');
 
         var linksDelta = selectLinks().data(activeLinks, function(d) { return d.source.id + '-' + d.target.id; });

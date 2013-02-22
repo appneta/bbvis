@@ -62,13 +62,13 @@ var update = _.debounce(function() {
     tbone.set('dat.numLinks', data.numLinks);
     // console.log('dat', data);
     graph.reset(objs);
-}, 10);
+}, 50);
 
 function receive(event) {
     // respond({ msg: 'received ' + event.msg });
     // document.body.textContent = JSON.stringify(event);
     if (event.reload) {
-        console.log('reload');
+        console.log('BBVis: reloading.');
         objs = {};
         update();
         restart();
