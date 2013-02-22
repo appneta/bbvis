@@ -1,4 +1,4 @@
-chrome.devtools.panels.create("BBVis", "/icon.png", "/panel.html", function(extensionPanel) {
+chrome.devtools.panels.create("BBVis", "/icon.png", "/bbvis_panel.html", function(extensionPanel) {
     var _window; // Going to hold the reference to panel.html's `window`
 
 

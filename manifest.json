@@ -3,7 +3,7 @@
   "name": "Backbone Vis",
   "description": "Developer Tools extension to inspect & visualize Backbone models & views",
   "version": "1.1",
-  "devtools_page": "devtools.html",
+  "devtools_page": "bbvis_devtools.html",
 
   "permissions": [
     "tabs",
@@ -14,7 +14,7 @@
   ],
   "background": {
     "scripts": [
-      "background.js"
+      "bbvis_background.js"
     ]
   },
   "content_scripts": [
@@ -24,12 +24,12 @@
         "https://*/*"
       ],
       "js": [
-        "content.js"
+        "bbvis_content.js"
       ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
-    "injected.js"
+    "bbvis_instrumentation.js"
   ]
 }

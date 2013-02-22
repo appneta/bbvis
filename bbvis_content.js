@@ -1,5 +1,5 @@
 var script = document.createElement("script");
-script.setAttribute("src", chrome.extension.getURL('/injected.js'));
+script.setAttribute("src", chrome.extension.getURL('/bbvis_instrumentation.js'));
 document.getElementsByTagName('html')[0].appendChild(script);
 
 var queue = [];
