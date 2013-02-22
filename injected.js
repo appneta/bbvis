@@ -45,9 +45,20 @@ function getListeners(obj) {
 }
 
 function init() {
+
+    function ObjParallel (obj) {
+        this.id = getId(obj);
+        this.obj = obj;
+
+        this.ping = _.debounce(function () {
+            // console.log('ping ' + this.id);
+            window.postMessage({ bbvis: { id: this.id, ping: true } }, location.href);
+        }, 200);
+    }
+
     var lastmsg = {};
 
-    function post(obj, msg) {
+    function post(obj, msg, force) {
         var m = _.clone(msg || {});
         m.isView = !!obj._ensureElement;
         if (m.isView) {
@@ -55,23 +66,30 @@ function init() {
         }
         m.id = getId(obj);
         m.name = getName(obj);
-        m.waiting = !!getObj(obj).waiting;
+        var parallel = getObjParallel(obj);
+        m.waiting = !!parallel.waiting;
+        var data;
         try {
-            m.data = JSON.stringify(getObj(obj).data);
-        } catch(e) {}
+            data = parallel.data && JSON.stringify(parallel.data);
+        } catch(e) {
+            data = '"BBVis Error: Could not serialize object data"';
+        }
+        delete parallel.data;
+        if (data && (force || data !== parallel.last_data)) {
+            m.data = data;
+            parallel.last_data = data;
+        }
         var str = JSON.stringify(m);
         // Don't send data that is already up-to-date
-        if (lastmsg[m.id] !== str) {
+        if (force || lastmsg[m.id] !== str) {
             lastmsg[m.id] = str;
+            // console.log('post ' + m.id);
             window.postMessage({ bbvis: m }, location.href);
         }
     }
 
-    function ping(obj) {
-        window.postMessage({ bbvis: { id: getId(obj), ping: true } }, location.href);
-    }
-
     var objs = {};
+    var objParallels = {};
     var dirty = {};
 
     var cleanTimer;
@@ -84,6 +102,14 @@ function init() {
             setDirty(obj);
         }
         return obj.__bbvisid__;
+    }
+
+    function getObjParallel(obj) {
+        var id = getId(obj);
+        if (!objParallels[id]) {
+            objParallels[id] = new ObjParallel(obj);
+        }
+        return objParallels[id];
     }
 
     function getName(o) {
@@ -105,17 +131,25 @@ function init() {
         }
     }
 
-    function setDirty(obj) {
+    function setDirty(obj, force) {
         var id = getId(obj);
-        dirty[id] = true;
+        dirty[id] = force;
         if (!cleanTimer) {
-            cleanTimer = setTimeout(clean, 1);
+            cleanTimer = setTimeout(clean, 60);
         }
     }
 
-    function setAllDirty () {
+    function setAllDirty (force) {
         for (var id in objs) {
-            setDirty(objs[id]);
+            setDirty(objs[id], force);
+        }
+    }
+
+    function setAllViewsDirty () {
+        for (var id in objs) {
+            if (objs[id].bbvistype === 'view') {
+                setDirty(objs[id]);
+            }
         }
     }
 
@@ -125,14 +159,18 @@ function init() {
 
     function clean() {
         cleanTimer = null;
+        var num = 0;
         for (var id in dirty) {
+            num++;
             var obj = objs[id];
             var listeners = _.map(getListeners(obj), getId);
             listeners.sort();
+            var force = dirty[id] === true;
             post(obj, {
                 listeners: listeners
-            });
+            }, force);
         }
+        // console.log('cleaned ' + num);
         dirty = {};
     }
 
@@ -161,16 +199,16 @@ function init() {
 
     wrap(Backbone.Model.prototype, 'fetch', function () {
         if (getObj(this)) {
-            getObj(this).waiting = true;
+            getObjParallel(this).waiting = true;
             setDirty(getObj(this));
         }
     });
 
     wrap(Backbone.Model.prototype, 'set', function () {}, function () {
         if (getObj(this)) {
-            getObj(this).waiting = false;
-            getObj(this).data = this.toJSON();
-            ping(getObj(this));
+            getObjParallel(this).waiting = false;
+            getObjParallel(this).data = this.toJSON();
+            getObjParallel(this).ping();
             setDirty(getObj(this));
         }
     });
@@ -179,8 +217,8 @@ function init() {
     wrap(Backbone.View.prototype, '_configure', function() {
         // on render, mark everything dirty, because views could have changed and active flags could all be obsolete
         wrap(this, 'render', function() {
-            if (getObj(this)) { ping(getObj(this)); }
-            setAllDirty();
+            if (getObj(this)) { getObjParallel(this).ping(); }
+            setAllViewsDirty();
         });
     });
 
@@ -188,7 +226,7 @@ function init() {
         if (msg && msg.data && msg.data.bbvis === 'resend all') {
             lastmsg = {};
             // console.log('resending bbvis data');
-            setAllDirty();
+            setAllDirty(true);
         }
     }, false);
 }

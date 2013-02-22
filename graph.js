@@ -448,6 +448,9 @@ function createGraph(opts) {
         //     removeClass($el[0], 'unping');
         //     addClass($el[0], 'waiting');
         // },
+        updateText: function () {
+            updateClickedText();
+        },
         ping: function(id) {
             // getNode(opts).waiting = false;
             // refreshLocs();

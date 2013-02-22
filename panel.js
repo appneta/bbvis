@@ -62,19 +62,20 @@ var update = _.debounce(function() {
     tbone.set('dat.numLinks', data.numLinks);
     // console.log('dat', data);
     graph.reset(objs);
-}, 50);
+}, 100);
 
 function receive(event) {
     // respond({ msg: 'received ' + event.msg });
     // document.body.textContent = JSON.stringify(event);
     if (event.reload) {
-        console.log('BBVis: reloading.');
+        console.log('BBVis: Reloading.');
         objs = {};
         update();
         restart();
     } else if (!objs[event.id] || event.listeners) {
         objs[event.id] = _.extend(objs[event.id] || {}, event);
         update();
+        graph.updateText();
     } else if (event.ping) {
         graph.ping(event.id);
     }
