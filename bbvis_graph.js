@@ -266,7 +266,7 @@ function createGraph(opts) {
         _.each(activeModels, function(d) {
             d.viewListeners = _.reduce(d.listeners, function(list, listenerid) {
                 var listener = objects[listenerid];
-                return list.concat(listener.isView ? [ listener ] : []);
+                return list.concat(listener && listener.isView ? [ listener ] : []);
             }, []);
             d.text = ' ' + d.name + (d.viewListeners.length ? ' (' + d.viewListeners.length + ')' : '') + ' ';
             d.textwidth = Math.max(0, textWidth(d.text) - RADIUS); // - RADIUS just gives a little room for rounded corners
@@ -320,13 +320,15 @@ function createGraph(opts) {
                     "L -W -R"
                     ).replace(/R/g, RADIUS).replace(/W/g, Math.round(d.textwidth / 2));
             })
-            .attr('class', function(d) {
-                return 'unping node node-' + d.id + (d.waiting ? ' waiting' : '');
-            })
             .on('mouseover', mousein)
             .on('mouseout', mouseout)
             .on('click', click)
-            .each(function(d) { d.el = this; })
+            .each(function(d) { d.el = this; });
+
+        selectModels()
+            .attr('class', function(d) {
+                return 'unping node node-' + d.id + (d.waiting ? ' waiting' : '');
+            })
             .html(function(d) {
                 var $this = $(this);
                 $this.tooltip({
@@ -412,7 +414,8 @@ function createGraph(opts) {
             activeLinks = _.flatten(_.map(activeModels, function(model) {
                 return _.map(model.listeners, function(listenerid) {
                     var listener = objs[listenerid];
-                    return listener.isActive && !listener.isView ? [{ source: model, target: listener }] : [];
+                    return listener && listener.isActive && !listener.isView ?
+                        [{ source: model, target: listener }] : [];
                 });
             }));
             activeViews = _.filter(objs, function(obj) { return obj.isActive && obj.isView; });

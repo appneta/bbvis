@@ -23,7 +23,7 @@ function hasViewListener(obj, visited) {
                     obj.isActiveView :
                     // Otherwise, recursively call hasViewListener for models
                     _.any(obj.listeners || [], function(id) {
-                        return hasViewListener(objs[id], visited);
+                        return objs[id] && hasViewListener(objs[id], visited);
                     }));
     } else {
         // We've already visited this, which means that this is a model and that we're
@@ -53,7 +53,7 @@ var update = _.debounce(function() {
         }
         memo.numLinks += _.reduce(obj.listeners, function(num, listenerid) {
             var listener = objs[listenerid];
-            return num + (listener.isActive ? 1 : 0);
+            return listener ? num + (listener.isActive ? 1 : 0) : 0;
         }, 0);
         return memo;
     }, { numViews: 0, numModels: 0, numLinks: 0 });

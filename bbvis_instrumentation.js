@@ -48,11 +48,14 @@ function init() {
 
     function ObjParallel (obj) {
         this.id = getId(obj);
-        this.obj = obj;
+        this.obj = getObj(obj);
+        this.data = "(no data)";
 
         this.ping = _.debounce(function () {
-            // console.log('ping ' + this.id);
-            window.postMessage({ bbvis: { id: this.id, ping: true } }, location.href);
+            if (this.sendEnabled) {
+                // console.log('ping ' + this.id);
+                window.postMessage({ bbvis: { id: this.id, ping: true } }, location.href);
+            }
         }, 200);
     }
 
@@ -60,19 +63,30 @@ function init() {
 
     function post(obj, msg, force) {
         var m = _.clone(msg || {});
-        m.isView = !!obj._ensureElement;
+        m.isView = obj.bbvistype === 'view';
         if (m.isView) {
             m.isActiveView = !!(obj.$el || $(obj.el)).closest('body').length;
         }
         m.id = getId(obj);
         m.name = getName(obj);
         var parallel = getObjParallel(obj);
-        m.waiting = !!parallel.waiting;
+        if (parallel.waiting != null) {
+            m.waiting = !!parallel.waiting;
+        }
         var data;
         try {
-            data = parallel.data && JSON.stringify(parallel.data);
+            var MAX_ARRAY_LENGTH = 20;
+            data = parallel.data && JSON.stringify(parallel.data, function (key, value) {
+                if (value && value.push && value.length > MAX_ARRAY_LENGTH) {
+                    var a = value.slice(0, MAX_ARRAY_LENGTH);
+                    a.push('... ' + (value.length - MAX_ARRAY_LENGTH) + ' more');
+                    return a;
+                } else {
+                    return value;
+                }
+            });
         } catch(e) {
-            data = '"BBVis Error: Could not serialize object data"';
+            data = JSON.stringify('BBVis Error - Could not serialize object data: ' + e);
         }
         delete parallel.data;
         if (data && (force || data !== parallel.last_data)) {
@@ -83,9 +97,11 @@ function init() {
         // Don't send data that is already up-to-date
         if (force || lastmsg[m.id] !== str) {
             lastmsg[m.id] = str;
-            // console.log('post ' + m.id);
+            // console.log('post ' + m.id + ', ' + m.waiting);
             window.postMessage({ bbvis: m }, location.href);
+            return true;
         }
+        return false;
     }
 
     var objs = {};
@@ -96,6 +112,7 @@ function init() {
 
     var nextId = 1;
     function getId(obj) {
+        obj = getObj(obj);
         if (!obj.__bbvisid__) {
             var id = obj.__bbvisid__ = nextId++;
             objs[id] = obj;
@@ -160,17 +177,22 @@ function init() {
     function clean() {
         cleanTimer = null;
         var num = 0;
+        var numSent = 0;
         for (var id in dirty) {
             num++;
             var obj = objs[id];
+            var parallel = getObjParallel(obj);
             var listeners = _.map(getListeners(obj), getId);
-            listeners.sort();
-            var force = dirty[id] === true;
-            post(obj, {
-                listeners: listeners
-            }, force);
+            parallel.sendEnabled = (obj.bbvistype === 'view') || (listeners.length > 0);
+            if (parallel.sendEnabled) {
+                listeners.sort();
+                var force = dirty[id] === true;
+                if (post(obj, { listeners: listeners }, force)) {
+                    numSent++;
+                }
+            }
         }
-        // console.log('cleaned ' + num);
+        // console.log('cleaned ' + num + ', sent ' + numSent);
         dirty = {};
     }
 
@@ -200,16 +222,19 @@ function init() {
     wrap(Backbone.Model.prototype, 'fetch', function () {
         if (getObj(this)) {
             getObjParallel(this).waiting = true;
+            // console.log('fetching ' + getId(this));
             setDirty(getObj(this));
         }
     });
 
     wrap(Backbone.Model.prototype, 'set', function () {}, function () {
         if (getObj(this)) {
-            getObjParallel(this).waiting = false;
+            if (getObjParallel(this).waiting != null) {
+                getObjParallel(this).waiting = false;
+            }
             getObjParallel(this).data = this.toJSON();
             getObjParallel(this).ping();
-            setDirty(getObj(this));
+            setDirty(this);
         }
     });
 
@@ -225,7 +250,7 @@ function init() {
     window.addEventListener('message', function(msg) {
         if (msg && msg.data && msg.data.bbvis === 'resend all') {
             lastmsg = {};
-            // console.log('resending bbvis data');
+            console.log('BBVis: Resending data to devtools.');
             setAllDirty(true);
         }
     }, false);
