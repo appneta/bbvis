@@ -5,6 +5,8 @@ Backbone views, models, and collections, and displays these connections in
 a Developer Tools panel.  It's especially useful in understanding connections
 between complex applications with many interdependent models and views.
 
+<center><a href="http://imgur.com/zzefiGr.png" target="_new"><img src="http://imgur.com/zzefiGr.png" width="400px"></a></center>
+
 BBVis was built specifically for use with TBone, but should work with regular
 Backbone apps within the limitations below.
 
