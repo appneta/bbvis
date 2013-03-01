@@ -10,6 +10,20 @@ tbone.autorun(function() {
     $('#numLinks').text(tbone.lookupText('dat.numLinks'));
 });
 
+$('#toggle_details').click(function () {
+    $('body').toggleClass('details-hidden');
+    update();
+    return false;
+})
+
+var showInactiveModels = false;
+$('#toggle_inactive').click(function () {
+    showInactiveModels = !showInactiveModels;
+    updateImmediate();
+    $('#toggle_inactive').text('show ' + (showInactiveModels ? 'only active' : 'all') + ' models');
+    return false;
+});
+
 function hasViewListener(obj, visited) {
     if (!visited) { visited = {}; }
     if (!visited[obj.id]) {
@@ -34,7 +48,7 @@ function hasViewListener(obj, visited) {
 
 var graph = createGraph({ el: $('#graph')[0] });
 
-var update = _.debounce(function() {
+function updateImmediate() {
     // Compute isActive for everyone
     _.each(objs, function (obj) {
         obj.isActive = null;
@@ -43,7 +57,12 @@ var update = _.debounce(function() {
         hasViewListener(obj);
     });
 
-    var active = _.filter(_.values(objs), function(obj) { return obj.isActive; });
+    var active = _.filter(_.values(objs), function(obj) {
+        if (showInactiveModels) {
+            obj.isActive = true;
+        }
+        return obj.isActive;
+    });
 
     var data = _.reduce(active, function(memo, obj) {
         if (obj.isView) {
@@ -62,7 +81,8 @@ var update = _.debounce(function() {
     tbone.set('dat.numLinks', data.numLinks);
     // console.log('dat', data);
     graph.reset(objs);
-}, 100);
+}
+var update = _.debounce(updateImmediate, 100);
 
 function receive(event) {
     // respond({ msg: 'received ' + event.msg });

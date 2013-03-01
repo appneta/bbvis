@@ -12,8 +12,16 @@ pre, body, html {
   border-right: 1px solid #eee;
 }
 
+body.details-hidden #inspect {
+  display: none;
+}
+
 #graph {
   width: 75%;
+}
+
+body.details-hidden #graph {
+  width: 100%;
 }
 
 #graph * {
@@ -24,6 +32,19 @@ pre, body, html {
   height: 100%;
   float: left;
   overflow: scroll;
+}
+
+#toggles {
+  display: inline-block;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  background: white;
+  height: 20px;
+}
+
+#toggles a {
+  padding: 3px;
 }
 
 #content {
