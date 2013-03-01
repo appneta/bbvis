@@ -170,18 +170,24 @@
         var strKey = _.find(nameProperties, function (key) {
             return typeof o[key] === 'string';
         });
+        var name = 'no name';
         if (strKey) {
-            return o[strKey];
+            name = o[strKey];
         } else {
             var fnKey = _.find(keys, function (key) {
                 return typeof o[key] === 'function';
             });
             if (fnKey) {
-                return o[fnKey].call(o);
-            } else {
-                return 'no name';
+                name = o[fnKey].call(o);
             }
         }
+        if (o.get && o.idAttribute) {
+            var id = o.get(o.idAttribute);
+            if (id != null) {
+                name = name + '#' + id;
+            }
+        }
+        return name;
     }
 
     function setDirty(obj, force) {
