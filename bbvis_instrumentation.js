@@ -156,7 +156,6 @@
         })
         bestNames.reverse();
         bestNames.push('cid'); // fall back to cid if there's nothing unique
-        console.log(bestNames);
         nameProperties = bestNames;
     };
 
