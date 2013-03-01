@@ -1,50 +1,55 @@
 (function () {
 
-var initted = false;
-document.addEventListener('load', function instrumentBackbone(ev) {
-    if (window.Backbone && !initted) {
-        document.removeEventListener('load', instrumentBackbone);
-        init();
-        console.log('BBVis: Backbone instrumented.');
-        initted = true;
-    }
-}, true);
-
-function getObj(obj) {
-    if (obj) {
-        // optionally dereference context for compatibility with TBone Scope objects,
-        // and only return the resulting object if it's a Backbone Model/View/Collection
-        var o = obj.context || obj;
-        return o.bbvistype && o;
-    } else {
-        return null;
-    }
-}
-
-function getListeners(obj) {
-    var listeners = [];
-    _.each(_.values(obj._callbacks || {}), function (ll) {
-        var curr = ll.next;
-        while (true) {
-            if (curr && curr.context) {
-                var listener = getObj(curr.context);
-                /**
-                 * Don't publish event binding of collections to their
-                 * own models; this happens automatically in backbone.
-                 **/
-                if (listener && listener !== obj.collection) {
-                    listeners.push(listener);
-                }
-                curr = curr.next;
-            } else {
-                break;
-            }
+    var initted = false;
+    document.addEventListener('load', function instrumentBackbone(ev) {
+        if (window.Backbone && !initted) {
+            document.removeEventListener('load', instrumentBackbone);
+            init();
+            console.log('BBVis: Backbone instrumented.');
+            initted = true;
         }
-    });
-    return _.uniq(listeners);
-}
+    }, true);
 
-function init() {
+    function getObj(obj) {
+        if (obj) {
+            // optionally dereference context for compatibility with TBone Scope objects,
+            // and only return the resulting object if it's a Backbone Model/View/Collection
+            var o = obj.context || obj;
+            return o.bbvistype && o;
+        } else {
+            return null;
+        }
+    }
+
+    function getListeners(obj) {
+        var listeners = [];
+        _.each(_.values(obj._callbacks || {}), function (ll) {
+            var curr = ll.next;
+            while (true) {
+                if (curr && curr.context) {
+                    var listener = getObj(curr.context);
+                    /**
+                     * Don't publish event binding of collections to their
+                     * own models; this happens automatically in backbone.
+                     **/
+                    if (listener && listener !== obj.collection) {
+                        listeners.push(listener);
+                    }
+                    curr = curr.next;
+                } else {
+                    break;
+                }
+            }
+        });
+        return _.uniq(listeners);
+    }
+
+    var lastmsg = {};
+    var objs = {};
+    var objParallels = {};
+    var dirty = {};
+    var cleanTimer;
+    var nextId = 1;
 
     function ObjParallel (obj) {
         this.id = getId(obj);
@@ -58,8 +63,6 @@ function init() {
             }
         }, 200);
     }
-
-    var lastmsg = {};
 
     function post(obj, msg, force) {
         var m = _.clone(msg || {});
@@ -104,13 +107,6 @@ function init() {
         return false;
     }
 
-    var objs = {};
-    var objParallels = {};
-    var dirty = {};
-
-    var cleanTimer;
-
-    var nextId = 1;
     function getId(obj) {
         obj = getObj(obj);
         if (!obj.__bbvisid__) {
@@ -207,64 +203,65 @@ function init() {
         // console.log('cleaned ' + num + ', sent ' + numSent);
     }
 
+    function init() {
 
-    Backbone.Model.prototype.bbvistype = 'model';
-    Backbone.View.prototype.bbvistype = 'view';
-    Backbone.Collection.prototype.bbvistype = 'collection';
+        Backbone.Model.prototype.bbvistype = 'model';
+        Backbone.View.prototype.bbvistype = 'view';
+        Backbone.Collection.prototype.bbvistype = 'collection';
 
-    function wrap(proto, method, wrapperBefore, wrapperAfter) {
-        var orig = proto[method];
-        proto[method] = function() {
-            wrapperBefore.apply(this, arguments);
-            var rval = orig.apply(this, arguments);
-            if (wrapperAfter) {
-                wrapperAfter.call(this, rval);
-            }
-            return rval;
-        };
-    }
-
-    var origOn = Backbone.Model.prototype.on;
-    wrap(Backbone.Model.prototype, 'on', function(event, cb, context) {
-        if (getObj(this)) { setDirty(getObj(this)); }
-        if (getObj(context)) { add(getObj(context)); }
-    });
-
-    wrap(Backbone.Model.prototype, 'fetch', function () {
-        if (getObj(this)) {
-            getObjParallel(this).waiting = true;
-            // console.log('fetching ' + getId(this));
-            setDirty(getObj(this));
+        function wrap(proto, method, wrapperBefore, wrapperAfter) {
+            var orig = proto[method];
+            proto[method] = function() {
+                wrapperBefore.apply(this, arguments);
+                var rval = orig.apply(this, arguments);
+                if (wrapperAfter) {
+                    wrapperAfter.call(this, rval);
+                }
+                return rval;
+            };
         }
-    });
 
-    wrap(Backbone.Model.prototype, 'set', function () {}, function () {
-        if (getObj(this)) {
-            if (getObjParallel(this).waiting != null) {
-                getObjParallel(this).waiting = false;
-            }
-            getObjParallel(this).data = this.toJSON();
-            getObjParallel(this).ping();
-            setDirty(this);
-        }
-    });
-
-    // Use the call to _configure during View construction to wrap render
-    wrap(Backbone.View.prototype, '_configure', function() {
-        // on render, mark everything dirty, because views could have changed and active flags could all be obsolete
-        wrap(this, 'render', function() {
-            if (getObj(this)) { getObjParallel(this).ping(); }
-            setAllViewsDirty();
+        var origOn = Backbone.Model.prototype.on;
+        wrap(Backbone.Model.prototype, 'on', function(event, cb, context) {
+            if (getObj(this)) { setDirty(getObj(this)); }
+            if (getObj(context)) { add(getObj(context)); }
         });
-    });
 
-    window.addEventListener('message', function(msg) {
-        if (msg && msg.data && msg.data.bbvis === 'resend all') {
-            lastmsg = {};
-            console.log('BBVis: Resending data to devtools.');
-            setAllDirty(true);
-        }
-    }, false);
-}
+        wrap(Backbone.Model.prototype, 'fetch', function () {
+            if (getObj(this)) {
+                getObjParallel(this).waiting = true;
+                // console.log('fetching ' + getId(this));
+                setDirty(getObj(this));
+            }
+        });
+
+        wrap(Backbone.Model.prototype, 'set', function () {}, function () {
+            if (getObj(this)) {
+                if (getObjParallel(this).waiting != null) {
+                    getObjParallel(this).waiting = false;
+                }
+                getObjParallel(this).data = this.toJSON();
+                getObjParallel(this).ping();
+                setDirty(this);
+            }
+        });
+
+        // Use the call to _configure during View construction to wrap render
+        wrap(Backbone.View.prototype, '_configure', function() {
+            // on render, mark everything dirty, because views could have changed and active flags could all be obsolete
+            wrap(this, 'render', function() {
+                if (getObj(this)) { getObjParallel(this).ping(); }
+                setAllViewsDirty();
+            });
+        });
+
+        window.addEventListener('message', function(msg) {
+            if (msg && msg.data && msg.data.bbvis === 'resend all') {
+                lastmsg = {};
+                console.log('BBVis: Resending data to devtools.');
+                setAllDirty(true);
+            }
+        }, false);
+    }
 
 }());
