@@ -111,8 +111,14 @@
         obj = getObj(obj);
         if (!obj.__bbvisid__) {
             var id = obj.__bbvisid__ = nextId++;
-            objs[id] = obj;
+            if (!objs[id]) {
+                objs[id] = obj;
+                if (nameProperties !== undefined) {
+                    guessNameProperties();
+                }
+            }
             setDirty(obj);
+            // If we've already guessed names before, maybe try again
         }
         return obj.__bbvisid__;
     }
@@ -125,9 +131,43 @@
         return objParallels[id];
     }
 
+    var guessNameProperties = function() {
+        setAllDirty();
+        var possiblities = {};
+        var realObjs = _.map(_.values(objs), getObj);
+        _.each(realObjs, function(obj) {
+            for (var k in obj) {
+                if (typeof obj[k] === 'string') {
+                    if (!possiblities[k]) {
+                        possiblities[k] = [];
+                    }
+                    possiblities[k].push(obj[k]);
+                }
+            }
+        });
+        delete possiblities.cid;
+        delete possiblities.bbvistype;
+        var props = _.keys(possiblities);
+        var okayNames = _.filter(props, function (prop) {
+            return _.uniq(possiblities[prop]).length > 1;
+        });
+        var bestNames = _.sortBy(okayNames, function (prop) {
+            return _.uniq(possiblities[prop]).length;
+        })
+        bestNames.reverse();
+        bestNames.push('cid'); // fall back to cid if there's nothing unique
+        console.log(bestNames);
+        nameProperties = bestNames;
+    };
+
+    var nameProperties;
     function getName(o) {
+        if (nameProperties === undefined) {
+            guessNameProperties();
+        }
+
         var keys = 'name Name id ID Id'.split(' ');
-        var strKey = _.find(keys, function (key) {
+        var strKey = _.find(nameProperties, function (key) {
             return typeof o[key] === 'string';
         });
         if (strKey) {
@@ -204,6 +244,10 @@
     }
 
     function init() {
+
+        // We can't do this until now because underscore won't be available
+        // on initial load.
+        guessNameProperties = _.debounce(guessNameProperties, 1000, true);
 
         Backbone.Model.prototype.bbvistype = 'model';
         Backbone.View.prototype.bbvistype = 'view';
