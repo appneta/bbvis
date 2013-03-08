@@ -309,6 +309,15 @@ function createGraph(opts) {
             .delay(1000)
             .remove();
         modelDelta.enter().append("path")
+            .on('mouseover', mousein)
+            .on('mouseout', mouseout)
+            .on('click', click)
+            .each(function(d) { d.el = this; });
+
+        selectModels()
+            .attr('class', function(d) {
+                return 'unping node node-' + d.id + (d.waiting ? ' waiting' : '');
+            })
             .attr("transform", loc)
             .attr("d", function(d) {
                 // Draw a rounded rectangle.
@@ -319,15 +328,6 @@ function createGraph(opts) {
                     "A R R 0 0 0 W -R" +
                     "L -W -R"
                     ).replace(/R/g, RADIUS).replace(/W/g, Math.round(d.textwidth / 2));
-            })
-            .on('mouseover', mousein)
-            .on('mouseout', mouseout)
-            .on('click', click)
-            .each(function(d) { d.el = this; });
-
-        selectModels()
-            .attr('class', function(d) {
-                return 'unping node node-' + d.id + (d.waiting ? ' waiting' : '');
             })
             .html(function(d) {
                 var $this = $(this);
@@ -362,11 +362,13 @@ function createGraph(opts) {
         var textDelta = selectText().data(activeModels, function(d) { return d.id; });
         textDelta.exit().classed("remove", true).transition().delay(1000).remove();
         textDelta.enter().append("text")
-            .attr("transform", loc)
             .attr('text-anchor', 'middle')
             .attr("y", ".28em")
-            .text(function(d) { return d.text; })
             .each(function(d) { d.textel = this; });
+
+        selectText()
+            .attr("transform", loc)
+            .text(function(d) { return d.text; });
 
 
         // svg.attr('height', function() {

@@ -29,7 +29,7 @@
              * Don't publish event binding of collections to their
              * own models; this happens automatically in backbone.
              **/
-            if (listener && listener !== context.collection) {
+            if (listener && listener !== self.collection) {
                 listeners.push(listener);
             }
         }
@@ -173,7 +173,7 @@
             guessNameProperties();
         }
 
-        var keys = 'name Name id ID Id'.split(' ');
+        var keys = 'name Name title Title id Id ID'.split(' ');
         var strKey = _.find(nameProperties, function (key) {
             return typeof o[key] === 'string';
         });
@@ -190,15 +190,17 @@
         }
         var id;
         if (o.get) {
-            if (o.idAttribute) {
-                id = o.get(o.idAttribute);
+            var arg;
+            var args = 'name Name title Title id Id ID'.split(' ');
+            if (o.idAttribute != null) {
+                args.unshift(o.idAttribute);
             }
-            if (id == null) {
-                id = o.get('id') || o.get('name') || o.get('title');
+            while (id == null && (arg = args.shift())) {
+                id = o.get(arg);
             }
-        }
-        if (id != null) {
-            name = name + '#' + id;
+            if (id != null) {
+                name = name + '#' + id;
+            }
         }
         return name;
     }
