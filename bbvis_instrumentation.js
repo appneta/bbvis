@@ -188,11 +188,17 @@
                 name = o[fnKey].call(o);
             }
         }
-        if (o.get && o.idAttribute) {
-            var id = o.get(o.idAttribute);
-            if (id != null) {
-                name = name + '#' + id;
+        var id;
+        if (o.get) {
+            if (o.idAttribute) {
+                id = o.get(o.idAttribute);
             }
+            if (id == null) {
+                id = o.get('id') || o.get('name') || o.get('title');
+            }
+        }
+        if (id != null) {
+            name = name + '#' + id;
         }
         return name;
     }
