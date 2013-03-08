@@ -18,6 +18,17 @@ Backbone apps within the limitations below.
 - Find and select this `bbvis` folder
 - (Re-)open the developer tools console; there should be a new BBVis tab.
 
+## Known working sites
+
+There are still some fairly jagged edges, but try these out to see bbvis in action:
+
+- http://tbonejs.org/
+- http://addyosmani.github.com/todomvc/architecture-examples/backbone/
+- http://www.dbpatterns.com/documents/507d2e6e89cbad2046a3e1f0
+
+The screenshot above is from our web performance app at
+http://www.appneta.com/application-performance-management/
+
 ## TODO
 
 - View render highlighting is not yet imported from pre-extension implementation.
