@@ -240,7 +240,12 @@
             var obj = objs[id];
             var parallel = getObjParallel(obj);
             var listeners = _.map(getListeners(obj), getId);
-            parallel.sendEnabled = (obj.bbvistype === 'view') || (listeners.length > 0);
+            // Only send the new info if this is a view, if this has listeners,
+            // or if this no longer has any listeners.
+            parallel.sendEnabled = (
+                (obj.bbvistype === 'view') ||
+                (listeners.length > 0) ||
+                (parallel.hadListeners && listeners.length === 0));
             if (parallel.sendEnabled) {
                 listeners.sort();
                 var force = dirty[id] === true;
@@ -248,6 +253,7 @@
                     numSent++;
                 }
             }
+            parallel.hadListeners = listeners.length > 0;
             cleaned.push(id);
         }
         for (var i = 0; i < cleaned.length; i++) {
@@ -278,8 +284,12 @@
             };
         }
 
-        var origOn = Backbone.Model.prototype.on;
         wrap(Backbone.Model.prototype, 'on', function(event, cb, context) {
+            if (getObj(this)) { setDirty(getObj(this)); }
+            if (getObj(context)) { add(getObj(context)); }
+        });
+
+        wrap(Backbone.Model.prototype, 'off', function(event, cb, context) {
             if (getObj(this)) { setDirty(getObj(this)); }
             if (getObj(context)) { add(getObj(context)); }
         });
