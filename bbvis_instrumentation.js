@@ -21,24 +21,32 @@
         }
     }
 
-    function getListeners(obj) {
+    function getListeners(self) {
         var listeners = [];
-        _.each(_.values(obj._callbacks || {}), function (ll) {
+        function add(context) {
+            var listener = getObj(context);
+            /**
+             * Don't publish event binding of collections to their
+             * own models; this happens automatically in backbone.
+             **/
+            if (listener && listener !== context.collection) {
+                listeners.push(listener);
+            }
+        }
+        // Older backbone:
+        _.each(_.values(self._callbacks || {}), function (ll) {
             var curr = ll.next;
-            while (true) {
-                if (curr && curr.context) {
-                    var listener = getObj(curr.context);
-                    /**
-                     * Don't publish event binding of collections to their
-                     * own models; this happens automatically in backbone.
-                     **/
-                    if (listener && listener !== obj.collection) {
-                        listeners.push(listener);
-                    }
-                    curr = curr.next;
-                } else {
-                    break;
+            while (curr) {
+                if (curr.context) {
+                    add(curr.context);
                 }
+                curr = curr.next;
+            }
+        });
+        // Newer backbone:
+        _.each(_.flatten(_.values(self._events || {})), function (ev) {
+            if (ev.context) {
+                add(ev.context);
             }
         });
         return _.uniq(listeners);
