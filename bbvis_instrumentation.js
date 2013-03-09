@@ -1,49 +1,10 @@
 
 (function () {
 
-    // From https://github.com/douglascrockford/JSON-js/blob/master/cycle.js
-    function decycle (object) {
-        'use strict';
-        var objects = [],
-            paths = [];
-        return (function derez(value, path) {
-            var i, name, nu;
-            if (typeof value === 'object' && value !== null &&
-                    !(value instanceof Boolean) &&
-                    !(value instanceof Date)    &&
-                    !(value instanceof Number)  &&
-                    !(value instanceof RegExp)  &&
-                    !(value instanceof String)) {
-
-                for (i = 0; i < objects.length; i += 1) {
-                    if (objects[i] === value) {
-                        // XXX this could return a $ref if we had a proper way
-                        // to display in the dev tools panel
-                        return "<<cycle removed>>"
-                        // return {$ref: paths[i]};
-                    }
-                }
-                objects.push(value);
-                paths.push(path);
-                if (Object.prototype.toString.apply(value) === '[object Array]') {
-                    nu = [];
-                    for (i = 0; i < value.length; i += 1) {
-                        nu[i] = derez(value[i], path + '[' + i + ']');
-                    }
-                } else {
-
-                    nu = {};
-                    for (name in value) {
-                        if (Object.prototype.hasOwnProperty.call(value, name)) {
-                            nu[name] = derez(value[name],
-                                path + '[' + JSON.stringify(name) + ']');
-                        }
-                    }
-                }
-                return nu;
-            }
-            return value;
-        }(object, '$'));
+    if (!String.prototype.toJSON) {
+        String.prototype.toJSON = function () {
+            return '"' + this + '"';
+        };
     }
 
     var initted = false;
@@ -131,9 +92,26 @@
             m.waiting = !!parallel.waiting;
         }
         var data;
-        try {
+        // Adapted from https://github.com/douglascrockford/JSON-js/blob/master/cycle.js
+        function serialize (input) {
             var MAX_ARRAY_LENGTH = 10;
-            data = parallel.data && JSON.stringify(decycle(parallel.data), function (key, value) {
+            var seen = [];
+            return JSON.stringify(input, function (key, value) {
+                if (typeof value === 'object' && value !== null &&
+                        !(value instanceof Boolean) &&
+                        !(value instanceof Date)    &&
+                        !(value instanceof Number)  &&
+                        !(value instanceof RegExp)  &&
+                        !(value instanceof String)) {
+                    var matchIndex = seen.indexOf(value);
+                    if (matchIndex >= 0) {
+                        // XXX this could return a $ref if we had a proper way
+                        // to display in the dev tools panel
+                        return "<< BBVis: Duplicate Ref Removed >>";
+                        // return {$ref: paths[matchIndex]};
+                    }
+                    seen.push(value);
+                }
                 if (value && value.push && value.length > MAX_ARRAY_LENGTH) {
                     var a = value.slice(0, MAX_ARRAY_LENGTH);
                     a.push('... ' + (value.length - MAX_ARRAY_LENGTH) + ' more');
@@ -142,6 +120,9 @@
                     return value;
                 }
             });
+        }
+        try {
+            data = parallel.data && serialize(parallel.data);
         } catch(e) {
             data = JSON.stringify('BBVis Error - Could not serialize object data: ' + e);
         }
