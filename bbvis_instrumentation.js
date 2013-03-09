@@ -94,21 +94,23 @@
         var data;
         // Adapted from https://github.com/douglascrockford/JSON-js/blob/master/cycle.js
         function serialize (input) {
+            // On at least one site, the decycle stuff doesn't work right, so in that
+            // case maxItems prevents stack overflow.
             var MAX_ARRAY_LENGTH = 10;
+            var maxItems = 2000;
             var seen = [];
             return JSON.stringify(input, function (key, value) {
+                if (maxItems-- < 0) {
+                    return "<< BBVis: Max Item Limit Reached >>";
+                }
                 if (typeof value === 'object' && value !== null &&
                         !(value instanceof Boolean) &&
                         !(value instanceof Date)    &&
                         !(value instanceof Number)  &&
                         !(value instanceof RegExp)  &&
                         !(value instanceof String)) {
-                    var matchIndex = seen.indexOf(value);
-                    if (matchIndex >= 0) {
-                        // XXX this could return a $ref if we had a proper way
-                        // to display in the dev tools panel
+                    if (seen.indexOf(value) >= 0) {
                         return "<< BBVis: Duplicate Ref Removed >>";
-                        // return {$ref: paths[matchIndex]};
                     }
                     seen.push(value);
                 }
