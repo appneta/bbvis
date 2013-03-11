@@ -18,6 +18,38 @@
         }
     }, true);
 
+    function highlight($els, opts) {
+        if ($els && $els.offset && $els.outerHeight && $els.outerWidth && $els.map) {
+            return $els.map(function () {
+                var $el = $(this);
+                var offset = $el.offset();
+                var height = $el.outerHeight() || parseFloat($el.attr('height'));
+                var width = $el.outerWidth() || parseFloat($el.attr('width'));
+                var $box = $('<div>').css({
+                    position: 'absolute',
+                    left: offset.left,
+                    top: offset.top,
+                    width: width,
+                    height: height,
+                    border: '2px solid rgba(0, 255, 0, 0.8)',
+                    background: 'rgba(0, 255, 0, 0.3)',
+                    opacity: opts.opacity || 1,
+                    zIndex: 59999,
+                    pointerEvents: 'none',
+                    boxSizing: 'border-box'
+                }).appendTo('body');
+                if (opts.fade) {
+                    $box.animate({
+                        opacity: 0
+                    }, opts.fade, function() { $(this).remove(); });
+                }
+                return $box[0];
+            });
+        } else {
+            return [];
+        }
+    }
+
     function getObj(obj) {
         if (obj) {
             // optionally dereference context for compatibility with TBone Scope objects,
@@ -78,6 +110,9 @@
             if (this.sendEnabled) {
                 // console.log('ping ' + this.id);
                 window.postMessage({ bbvis: { id: this.id, ping: true } }, location.href);
+            }
+            if (self.obj.bbvistype === 'view' && !paused) {
+                highlight(self.obj.$el, { opacity: 0.2, fade: 1000 });
             }
         }, 200);
     }
