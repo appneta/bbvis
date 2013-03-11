@@ -14,6 +14,7 @@
             init();
             console.log('BBVis: Backbone instrumented.');
             initted = true;
+            window.postMessage({ bbvis: { loaded: true } }, location.href);
         }
     }, true);
 
@@ -65,8 +66,10 @@
     var dirty = {};
     var cleanTimer;
     var nextId = 1;
+    var paused = true;
 
     function ObjParallel (obj) {
+        var self = this;
         this.id = getId(obj);
         this.obj = getObj(obj);
         this.data = "(no data)";
@@ -262,6 +265,9 @@
 
     function clean() {
         cleanTimer = null;
+        if (paused) {
+            return;
+        }
         var num = 0;
         var numSent = 0;
         var cleaned = [];
@@ -360,10 +366,16 @@
         });
 
         window.addEventListener('message', function(msg) {
-            if (msg && msg.data && msg.data.bbvis === 'resend all') {
+            var bbvisMsg = msg && msg.data && msg.data.bbvis;
+            if (bbvisMsg === 'resend all') {
+                paused = false;
                 lastmsg = {};
-                console.log('BBVis: Resending data to devtools.');
+                // console.log('BBVis: Resending data to devtools.');
                 setAllDirty(true);
+            }
+            if (bbvisMsg === 'pause') {
+                paused = true;
+                // console.log('BBVis: pause.');
             }
         }, false);
     }

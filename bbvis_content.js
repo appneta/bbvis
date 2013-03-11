@@ -27,9 +27,6 @@ chrome.extension.onConnect.addListener(function(port) {
         delete queue.push;
     });
     port.onMessage.addListener(function(msg) {
-        // window.postMessage({ msg: msg }, "*");
-        // console.log('bbvis:', msg);
+        window.postMessage({ bbvis: msg }, window.location.href);
     });
 });
-
-// console.log('content.js loaded');

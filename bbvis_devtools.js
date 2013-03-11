@@ -4,10 +4,18 @@ chrome.devtools.panels.create("BBVis", "/icon.png", "/bbvis_panel.html", functio
 
     var data;
     var port;
+    var shown;
     function restart() {
         data = [];
         port = chrome.extension.connect({ name: chrome.devtools.inspectedWindow.tabId + '' });
         port.onMessage.addListener(function(msg) {
+            // On load, if the BBVis panel is currently shown, tell the page
+            // to send us data.
+            if (msg && msg.loaded) {
+                if (shown) {
+                    port.postMessage('resend all');
+                }
+            }
             // Write information to the panel, if exists.
             // If we don't have a panel reference (yet), queue the data.
             if (_window) {
@@ -15,20 +23,25 @@ chrome.devtools.panels.create("BBVis", "/icon.png", "/bbvis_panel.html", functio
             } else {
                 data.push(msg);
             }
-            // console.log('message received', msg);
         });
     }
     restart();
-    // port.postMessage('hello from devtools');
 
     extensionPanel.onShown.addListener(function tmp(panelWindow) {
         extensionPanel.onShown.removeListener(tmp); // Run once only
+        shown = true;
+
+        extensionPanel.onShown.addListener(function () {
+            port.postMessage('resend all');
+            shown = true;
+        });
+        extensionPanel.onHidden.addListener(function () {
+            port.postMessage('pause');
+            shown = false;
+        });
+
         _window = panelWindow;
 
-        // Just to show that it's easy to talk to pass a message back:
-        _window.respond = function(msg) {
-            port.postMessage(msg);
-        };
         _window.restart = restart;
 
         // Release queued data
@@ -36,9 +49,6 @@ chrome.devtools.panels.create("BBVis", "/icon.png", "/bbvis_panel.html", functio
         while (msg = data.shift())
             _window.receive(msg);
 
-        console.log('panel ready');
         restart();
     });
 });
-
-console.log('devtools.js loaded');
