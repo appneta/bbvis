@@ -25,7 +25,8 @@ function createGraph(opts) {
     }
 
     opts = _.extend({
-        height: 1000
+        height: 1000,
+        onHover: function () {}
     }, opts);
 
     var RADIUS = 12;
@@ -212,6 +213,7 @@ function createGraph(opts) {
             removeClass(el, 'unping');
             addClass(el, 'hover');
         });
+        opts.onHover(node.id);
     }
 
     function mouseout(node) {
@@ -230,6 +232,7 @@ function createGraph(opts) {
             removeClass(el, 'hover');
         });
         hovered = [];
+        opts.onHover(null);
     }
 
     var clicked;

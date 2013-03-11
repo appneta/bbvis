@@ -46,7 +46,12 @@ function hasViewListener(obj, visited) {
     }
 }
 
-var graph = createGraph({ el: $('#graph')[0] });
+var graph = createGraph({
+    el: $('#graph')[0],
+    onHover: function (id) {
+        hover(id);
+    }
+});
 
 function updateImmediate() {
     // Compute isActive for everyone

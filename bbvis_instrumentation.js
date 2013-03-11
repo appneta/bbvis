@@ -117,11 +117,32 @@
         }, 200);
     }
 
+    var $lastHoverHighlight;
+
+    function hover (id) {
+        if ($lastHoverHighlight) {
+            $lastHoverHighlight.remove();
+            $lastHoverHighlight = null;
+        }
+        if (id != null) {
+            var obj = objs[id];
+            var views = _.filter(getListeners(obj), function (listener) {
+                return listener.bbvistype === 'view';
+            });
+            var $els = $(_.pluck(views, 'el'));
+            $lastHoverHighlight = highlight($els, { opacity: 0.4 });
+        }
+    }
+
+    function isActiveView (obj) {
+        return (obj.$el || $(obj.el)).closest('body').length
+    }
+
     function post(obj, msg, force) {
         var m = _.clone(msg || {});
         m.isView = obj.bbvistype === 'view';
         if (m.isView) {
-            m.isActiveView = !!(obj.$el || $(obj.el)).closest('body').length;
+            m.isActiveView = !!isActiveView(obj);
         }
         m.id = getId(obj);
         m.name = getName(obj);
@@ -402,15 +423,21 @@
 
         window.addEventListener('message', function(msg) {
             var bbvisMsg = msg && msg.data && msg.data.bbvis;
-            if (bbvisMsg === 'resend all') {
-                paused = false;
-                lastmsg = {};
-                // console.log('BBVis: Resending data to devtools.');
-                setAllDirty(true);
-            }
-            if (bbvisMsg === 'pause') {
-                paused = true;
-                // console.log('BBVis: pause.');
+            if (bbvisMsg) {
+                if (bbvisMsg.resend) {
+                    paused = false;
+                    lastmsg = {};
+                    // console.log('BBVis: Resending data to devtools.');
+                    setAllDirty(true);
+                }
+                if (bbvisMsg.pause) {
+                    paused = true;
+                    // console.log('BBVis: pause.');
+                }
+                if (bbvisMsg.hover !== undefined) {
+                    // console.log('hover ' + bbvisMsg.hover);
+                    hover(bbvisMsg.hover);
+                }
             }
         }, false);
     }

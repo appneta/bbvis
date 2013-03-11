@@ -14,7 +14,7 @@ window.addEventListener("message", function(event) {
 chrome.extension.sendMessage('content.js load');
 
 chrome.extension.onConnect.addListener(function(port) {
-    window.postMessage({ bbvis: 'resend all' }, window.location.href);
+    window.postMessage({ bbvis: { resend: true } }, window.location.href);
     // console.log('content connection received ', port);
     for (var i = 0; i < queue.length; i++) {
         port.postMessage(queue[i]);

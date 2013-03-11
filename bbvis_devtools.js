@@ -13,7 +13,7 @@ chrome.devtools.panels.create("BBVis", "/icon.png", "/bbvis_panel.html", functio
             // to send us data.
             if (msg && msg.loaded) {
                 if (shown) {
-                    port.postMessage('resend all');
+                    port.postMessage({ resend: true });
                 }
             }
             // Write information to the panel, if exists.
@@ -32,17 +32,21 @@ chrome.devtools.panels.create("BBVis", "/icon.png", "/bbvis_panel.html", functio
         shown = true;
 
         extensionPanel.onShown.addListener(function () {
-            port.postMessage('resend all');
+            port.postMessage({ resend: true });
             shown = true;
         });
         extensionPanel.onHidden.addListener(function () {
-            port.postMessage('pause');
+            port.postMessage({ pause: true });
             shown = false;
         });
 
         _window = panelWindow;
 
         _window.restart = restart;
+
+        _window.hover = function (id) {
+            port.postMessage({ hover: id });
+        };
 
         // Release queued data
         var msg;
