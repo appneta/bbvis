@@ -95,9 +95,16 @@ path.link.hover-upstream, path.link.hover-downstream {
 }
 
 .node {
-  fill: #fd8d3c;
   stroke: #000;
   stroke-width: 1.5px;
+}
+
+.node.model {
+  fill: #fd8d3c;
+}
+
+.node.view {
+  fill: #44bb00;
 }
 
 .node.hover {

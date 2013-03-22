@@ -126,11 +126,13 @@
         }
         if (id != null) {
             var obj = objs[id];
-            var views = _.filter(getListeners(obj), function (listener) {
-                return listener.bbvistype === 'view';
-            });
-            var $els = $(_.pluck(views, 'el'));
-            $lastHoverHighlight = highlight($els, { opacity: 0.4 });
+            // var views = _.filter(getListeners(obj), function (listener) {
+            //     return listener.bbvistype === 'view';
+            // });
+            // var $els = $(_.pluck(views, 'el'));
+            if (obj && obj.$el) {
+                $lastHoverHighlight = highlight(obj.$el, { opacity: 0.4 });
+            }
         }
     }
 

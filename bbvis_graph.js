@@ -29,7 +29,7 @@ function createGraph(opts) {
         onHover: function () {}
     }, opts);
 
-    var RADIUS = 12;
+    var RADIUS = 10;
 
     var links = {};
     var linksByNode = {};
@@ -42,9 +42,9 @@ function createGraph(opts) {
     var squaresList = [];
 
     var layout = dagre.layout()
-        .nodeSep(10)
-        .edgeSep(5)
-        .rankSep(20)
+        .nodeSep(8)
+        .edgeSep(4)
+        .rankSep(10)
         .nodes(nodesList)
         .edges(linksList);
 
@@ -261,12 +261,13 @@ function createGraph(opts) {
 
     var objects = [];
     var models = [];
+    var activeNodes = [];
     var activeModels = [];
     var activeViews = [];
     var activeLinks = [];
 
     var restart = _.debounce(function() {
-        _.each(activeModels, function(d) {
+        _.each(activeNodes, function(d) {
             d.viewListeners = _.reduce(d.listeners, function(list, listenerid) {
                 var listener = objects[listenerid];
                 return list.concat(listener && listener.isView ? [ listener ] : []);
@@ -277,14 +278,14 @@ function createGraph(opts) {
             d.height = 4 + RADIUS * 2;
         });
 
-        layout.nodes(activeModels).edges(activeLinks);
+        layout.nodes(activeNodes).edges(activeLinks);
         layout.run();
 
         var graphWidth = $('#graph').outerWidth();
-        var treeWidth = _.reduce(activeModels, function(memo, node) {
+        var treeWidth = _.reduce(activeNodes, function(memo, node) {
             return Math.max(memo, node.dagre.x + node.width);
         }, 0);
-        var treeHeight = _.reduce(activeModels, function(memo, node) {
+        var treeHeight = _.reduce(activeNodes, function(memo, node) {
             return Math.max(memo, node.dagre.y + node.height);
         }, 0);
         widthadjcenter = 0.5 * Math.max(0, graphWidth - treeWidth);
@@ -299,8 +300,8 @@ function createGraph(opts) {
             .classed("link", true)
             .each(function(d) { d.el = this; });
 
-        var modelDelta = selectModels().data(activeModels, function(d) { return d.id; });
-        modelDelta.exit()
+        var nodeDelta = selectModels().data(activeNodes, function(d) { return d.id; });
+        nodeDelta.exit()
             .each(function(d) {
                 $(this).tooltip('destroy');
                 if (clicked === d) {
@@ -311,26 +312,42 @@ function createGraph(opts) {
             .transition()
             .delay(1000)
             .remove();
-        modelDelta.enter().append("path")
+        nodeDelta.enter().append("path")
             .on('mouseover', mousein)
             .on('mouseout', mouseout)
             .on('click', click)
             .each(function(d) { d.el = this; });
 
-        selectModels()
+        nodeDelta
             .attr('class', function(d) {
-                return 'unping node node-' + d.id + (d.waiting ? ' waiting' : '');
+                return 'unping node node-' + d.id + (d.waiting ? ' waiting' : '') +
+                    ' ' + (d.isView ? 'view' : 'model');
             })
             .attr("transform", loc)
             .attr("d", function(d) {
                 // Draw a rounded rectangle.
-                return (
-                    "M -W -R" +
-                    "A R R 0 0 0 -W R" +
-                    "L W R" +
-                    "A R R 0 0 0 W -R" +
-                    "L -W -R"
-                    ).replace(/R/g, RADIUS).replace(/W/g, Math.round(d.textwidth / 2));
+                var path;
+                if (d.isView) {
+                    path = (
+                        "M -W -R " +
+                        "L -W R " +
+                        "L W R " +
+                        "L W -R " +
+                        "L -W -R"
+                    );
+                } else {
+                    path = (
+                        "M -w -R" +
+                        "A R R 0 0 0 -w R" +
+                        "L w R" +
+                        "A R R 0 0 0 w -R" +
+                        "L -w -R"
+                    );
+                }
+                return path
+                    .replace(/R/g, RADIUS)
+                    .replace(/w/g, Math.round(d.textwidth / 2))
+                    .replace(/W/g, RADIUS + Math.round(d.textwidth / 2));
             })
             .html(function(d) {
                 var $this = $(this);
@@ -362,7 +379,7 @@ function createGraph(opts) {
         //     .attr('class', function(d) { return 'unping tbonevis-view view node node-' + d.name; })
         //     .each(function(d) { d.el = this; });
 
-        var textDelta = selectText().data(activeModels, function(d) { return d.id; });
+        var textDelta = selectText().data(activeNodes, function(d) { return d.id; });
         textDelta.exit().classed("remove", true).transition().delay(1000).remove();
         textDelta.enter().append("text")
             .attr('text-anchor', 'middle')
@@ -416,14 +433,15 @@ function createGraph(opts) {
             objects = objs;
             models = _.filter(objs, function(obj) { return !obj.isView; });
             activeModels = _.filter(models, function(obj) { return obj.isActive; });
-            activeLinks = _.flatten(_.map(activeModels, function(model) {
+            activeViews = _.filter(objs, function(obj) { return obj.isActive && obj.isView; });
+            activeNodes = activeModels.concat(activeViews);
+            activeLinks = _.flatten(_.map(activeNodes, function(model) {
                 return _.map(model.listeners, function(listenerid) {
                     var listener = objs[listenerid];
-                    return listener && listener.isActive && !listener.isView ?
+                    return listener && listener.isActive ?
                         [{ source: model, target: listener }] : [];
                 });
             }));
-            activeViews = _.filter(objs, function(obj) { return obj.isActive && obj.isView; });
             restart();
         },
         // addLink: function(opts) {
