@@ -111,9 +111,9 @@
                 // console.log('ping ' + this.id);
                 window.postMessage({ bbvis: { id: this.id, ping: true } }, location.href);
             }
-            if (self.obj.bbvistype === 'view' && !paused) {
-                highlight(self.obj.$el, { opacity: 0.2, fade: 1000 });
-            }
+            // if (self.obj.bbvistype === 'view' && !paused) {
+            //     highlight(self.obj.$el, { opacity: 0.2, fade: 1000 });
+            // }
         }, 200);
     }
 
