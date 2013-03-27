@@ -7,6 +7,41 @@
         };
     }
 
+    var messages = [];
+    function send(msg) {
+        // messages.push(msg);
+        window.postMessage({ bbvis: msg }, location.href);
+    }
+
+    window.bbvis_getmessages = function () {
+        console.log('sending ' + messages.length + ' messages');
+        var msgs = messages;
+        messages = [];
+        return msgs;
+    };
+
+    window.bbvis_send = function (msg) {
+        console.log('received', msg);
+        receive(msg);
+    };
+
+    function receive(msg) {
+        if (msg.resend) {
+            paused = false;
+            lastmsg = {};
+            console.log('BBVis: Resending data to devtools.');
+            setAllDirty(true);
+        }
+        if (msg.pause) {
+            paused = true;
+            console.log('BBVis: pause.');
+        }
+        if (msg.hover !== undefined) {
+            console.log('hover ' + msg.hover);
+            hover(msg.hover);
+        }
+    }
+
     var initted = false;
     document.addEventListener('load', function instrumentBackbone(ev) {
         if (window.Backbone && !initted) {
@@ -14,7 +49,7 @@
             init();
             console.log('BBVis: Backbone instrumented.');
             initted = true;
-            window.postMessage({ bbvis: { loaded: true } }, location.href);
+            send({ loaded: true });
         }
     }, true);
 
@@ -109,7 +144,7 @@
         this.ping = _.debounce(function () {
             if (this.sendEnabled) {
                 // console.log('ping ' + this.id);
-                window.postMessage({ bbvis: { id: this.id, ping: true } }, location.href);
+                send({ id: this.id, ping: true });
             }
             // if (self.obj.bbvistype === 'view' && !paused) {
             //     highlight(self.obj.$el, { opacity: 0.2, fade: 1000 });
@@ -199,7 +234,7 @@
         if (force || lastmsg[m.id] !== str) {
             lastmsg[m.id] = str;
             // console.log('post ' + m.id + ', ' + m.waiting);
-            window.postMessage({ bbvis: m }, location.href);
+            send(m);
             return true;
         }
         return false;
@@ -426,20 +461,7 @@
         window.addEventListener('message', function(msg) {
             var bbvisMsg = msg && msg.data && msg.data.bbvis;
             if (bbvisMsg) {
-                if (bbvisMsg.resend) {
-                    paused = false;
-                    lastmsg = {};
-                    // console.log('BBVis: Resending data to devtools.');
-                    setAllDirty(true);
-                }
-                if (bbvisMsg.pause) {
-                    paused = true;
-                    // console.log('BBVis: pause.');
-                }
-                if (bbvisMsg.hover !== undefined) {
-                    // console.log('hover ' + bbvisMsg.hover);
-                    hover(bbvisMsg.hover);
-                }
+                receive(bbvisMsg);
             }
         }, false);
     }
