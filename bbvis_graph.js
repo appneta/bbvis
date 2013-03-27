@@ -189,10 +189,10 @@ function createGraph(opts) {
     var hovered = [];
 
     function mousein(node) {
-        var linksDownstream = _.filter(activeLinks, function (link) { return link.source === node; });
+        var linksDownstream = _.filter(visibleLinks, function (link) { return link.source === node; });
         var nodesDownstream = _.uniq(_.map(linksDownstream, function (link) { return link.target; }));
         hoverDownstream = _.pluck(linksDownstream, 'el').concat(_.flatten(_.map(nodesDownstream, getNodeElements)));
-        var linksUpstream = _.filter(activeLinks, function (link) { return link.target === node; });
+        var linksUpstream = _.filter(visibleLinks, function (link) { return link.target === node; });
         var nodesUpstream = _.uniq(_.map(linksUpstream, function (link) { return link.source; }));
         hoverUpstream = _.pluck(linksUpstream, 'el').concat(_.flatten(_.map(nodesUpstream, getNodeElements)));
         // pingDownstream = getListenerViewElements(node);
@@ -260,14 +260,13 @@ function createGraph(opts) {
     }
 
     var objects = [];
-    var models = [];
-    var activeNodes = [];
+    var visibleNodes = [];
     var activeModels = [];
     var activeViews = [];
-    var activeLinks = [];
+    var visibleLinks = [];
 
     var restart = _.debounce(function() {
-        _.each(activeNodes, function(d) {
+        _.each(visibleNodes, function(d) {
             d.viewListeners = _.reduce(d.listeners, function(list, listenerid) {
                 var listener = objects[listenerid];
                 return list.concat(listener && listener.isView ? [ listener ] : []);
@@ -278,14 +277,14 @@ function createGraph(opts) {
             d.height = 4 + RADIUS * 2;
         });
 
-        layout.nodes(activeNodes).edges(activeLinks);
+        layout.nodes(visibleNodes).edges(visibleLinks);
         layout.run();
 
         var graphWidth = $('#graph').outerWidth();
-        var treeWidth = _.reduce(activeNodes, function(memo, node) {
+        var treeWidth = _.reduce(visibleNodes, function(memo, node) {
             return Math.max(memo, node.dagre.x + node.width);
         }, 0);
-        var treeHeight = _.reduce(activeNodes, function(memo, node) {
+        var treeHeight = _.reduce(visibleNodes, function(memo, node) {
             return Math.max(memo, node.dagre.y + node.height);
         }, 0);
         widthadjcenter = 0.5 * Math.max(0, graphWidth - treeWidth);
@@ -293,14 +292,14 @@ function createGraph(opts) {
         svg.attr('width', Math.max(treeWidth, graphWidth) + 'px');
         svg.attr('height', treeHeight + 'px');
 
-        var linksDelta = selectLinks().data(activeLinks, function(d) { return d.source.id + '-' + d.target.id; });
+        var linksDelta = selectLinks().data(visibleLinks, function(d) { return d.source.id + '-' + d.target.id; });
         linksDelta.exit().classed("remove", true).transition().delay(1000).remove();
         linksDelta.enter().append("path")
             .attr("d", linkloc)
             .classed("link", true)
             .each(function(d) { d.el = this; });
 
-        var nodeDelta = selectModels().data(activeNodes, function(d) { return d.id; });
+        var nodeDelta = selectModels().data(visibleNodes, function(d) { return d.id; });
         nodeDelta.exit()
             .each(function(d) {
                 $(this).tooltip('destroy');
@@ -379,7 +378,7 @@ function createGraph(opts) {
         //     .attr('class', function(d) { return 'unping tbonevis-view view node node-' + d.name; })
         //     .each(function(d) { d.el = this; });
 
-        var textDelta = selectText().data(activeNodes, function(d) { return d.id; });
+        var textDelta = selectText().data(visibleNodes, function(d) { return d.id; });
         textDelta.exit().classed("remove", true).transition().delay(1000).remove();
         textDelta.enter().append("text")
             .attr('text-anchor', 'middle')
@@ -431,49 +430,16 @@ function createGraph(opts) {
     return {
         reset: function(objs) {
             objects = objs;
-            models = _.filter(objs, function(obj) { return !obj.isView; });
-            activeModels = _.filter(models, function(obj) { return obj.isActive; });
-            activeViews = _.filter(objs, function(obj) { return obj.isActive && obj.isView; });
-            activeNodes = activeModels.concat(activeViews);
-            activeLinks = _.flatten(_.map(activeNodes, function(model) {
-                return _.map(model.listeners, function(listenerid) {
+            visibleNodes = _.filter(objs, function (node) { return node.isVisible; });
+            visibleLinks = _.flatten(_.map(visibleNodes, function(node) {
+                return _.map(node.listeners || [], function(listenerid) {
                     var listener = objs[listenerid];
-                    return listener && listener.isActive ?
-                        [{ source: model, target: listener }] : [];
+                    return listener && listener.isVisible ?
+                        [{ source: node, target: listener }] : [];
                 });
             }));
             restart();
         },
-        // addLink: function(opts) {
-        //     opts = _.extend({
-        //         type: 'link'
-        //     }, opts);
-        //     opts.source = getNode(opts.source);
-        //     opts.target = getNode(opts.target);
-        //     var link = _.clone(opts);
-        //     if (!links[link.source.name]) {
-        //         links[link.source.name] = {};
-        //         linksCount[link.source.name] = 0;
-        //     }
-        //     if (!links[link.source.name][link.target.name]) {
-        //         links[link.source.name][link.target.name] = true;
-        //         linksCount[link.source.name] = (linksCount[link.source.name] || 0) + 1;
-        //         linksRevCount[link.target.name] = (linksRevCount[link.target.name] || 0) + 1;
-        //         linksList.push(link);
-        //         linksByNode[link.source.name].push(link);
-        //         linksByNode[link.target.name].push(link);
-        //         restart();
-        //     }
-        // },
-        // waiting: function(opts) {
-        //     /**
-        //      * We're fetching id, e.g. an ajax call is in progress
-        //      */
-        //     getNode(opts).waiting = true;
-        //     var $el = $('.node-' + opts.id);
-        //     removeClass($el[0], 'unping');
-        //     addClass($el[0], 'waiting');
-        // },
         updateText: function () {
             updateClickedText();
         },

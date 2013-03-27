@@ -1,27 +1,47 @@
 var objs = {};
 
-// tbone.addTemplate('content', '<p>Num Views: <%=data.numViews%></p><p>Num Models: <%=data.numModels%></p>');
-// tbone.render($('[tmpl]'));
-tbone.createModel('dat').singleton();
+tbone.createModel('options').singleton();
+T('options.showViews', true);
+T('options.showDetails', true);
 
-tbone.autorun(function() {
-    $('#numViews').text(tbone.lookupText('dat.numViews'));
-    $('#numModels').text(tbone.lookupText('dat.numModels'));
-    $('#numLinks').text(tbone.lookupText('dat.numLinks'));
+T(function() {
+    $('#numViews').text(tbone.lookupText('info.numViews'));
+    $('#numModels').text(tbone.lookupText('info.numModels'));
+    $('#numLinks').text(tbone.lookupText('info.numLinks'));
 });
 
-$('#toggle_details').click(function () {
-    $('body').toggleClass('details-hidden');
-    update();
-    return false;
-})
+$.fn.reclick = function (cb) {
+    return this.unbind('click').bind('click', cb);
+};
 
-var showInactiveModels = false;
-$('#toggle_inactive').click(function () {
-    showInactiveModels = !showInactiveModels;
-    updateImmediate();
-    $('#toggle_inactive').text('show ' + (showInactiveModels ? 'only active' : 'all') + ' models');
-    return false;
+tbone.createView('toggles', function () {
+    this.$('#toggle_details')
+        .text((T('options.showDetails') ? 'hide' : 'show') + ' details')
+        .reclick(function () {
+            T.toggle('options.showDetails');
+            _.defer(update);
+            return false;
+        });
+
+    this.$('#toggle_inactive')
+        .text('show ' + (T('options.showAllModels') ? 'only active' : 'all') + ' models')
+        .reclick(function () {
+            T.toggle('options.showAllModels');
+            _.defer(updateImmediate);
+            return false;
+        });
+
+    this.$('#toggle_views')
+        .text(T('options.showViews') ? 'hide views' : 'show views')
+        .reclick(function () {
+            T.toggle('options.showViews');
+            _.defer(updateImmediate);
+            return false;
+        });
+});
+
+T(function () {
+    $('body').toggleClass('details-hidden', !T('options.showDetails'));
 });
 
 function hasViewListener(obj, visited) {
@@ -32,7 +52,7 @@ function hasViewListener(obj, visited) {
             // If we have already calculated isActive this round, return that
             obj.isActive !== null ?
                 obj.isActive :
-                // If it's a view, return isActiveView (this is determined in inject.js)
+                // If it's a view, return isActiveView (this is determined in instrumentation)
                 obj.isView ?
                     obj.isActiveView :
                     // Otherwise, recursively call hasViewListener for models
@@ -62,36 +82,45 @@ function updateImmediate() {
         hasViewListener(obj);
     });
 
-    var active = _.filter(_.values(objs), function(obj) {
-        if (showInactiveModels) {
-            obj.isActive = true;
-        }
-        return obj.isActive;
+    var showViews = !!T('options.showViews');
+    var showAllModels = !!T('options.showAllModels');
+    function showNode(node) {
+        return node.isView ? (node.isActive && showViews) :
+            (node.isActive || showAllModels);
+    }
+    _.each(objs, function (obj) {
+        obj.isVisible = showNode(obj);
     });
-
-    var data = _.reduce(active, function(memo, obj) {
-        if (obj.isView) {
-            memo.numViews++;
-        } else {
-            memo.numModels++;
-        }
-        memo.numLinks += _.reduce(obj.listeners, function(num, listenerid) {
-            var listener = objs[listenerid];
-            return listener ? num + (listener.isActive ? 1 : 0) : 0;
-        }, 0);
-        return memo;
-    }, { numViews: 0, numModels: 0, numLinks: 0 });
-    tbone.set('dat.numViews', data.numViews);
-    tbone.set('dat.numModels', data.numModels);
-    tbone.set('dat.numLinks', data.numLinks);
-    // console.log('dat', data);
-    graph.reset(objs);
+    T('data.objects', _.clone(objs));
 }
+
+tbone.createModel('info', function () {
+    return _.reduce(active, function(memo, obj) {
+        if (obj.isActive) {
+            if (obj.isView) {
+                memo.numViews++;
+            } else {
+                memo.numModels++;
+            }
+            memo.numLinks += _.reduce(obj.listeners, function(num, listenerid) {
+                var listener = objs[listenerid];
+                return listener ? num + (listener.isActive ? 1 : 0) : 0;
+            }, 0);
+            return memo;
+        }
+    }, { numViews: 0, numModels: 0, numLinks: 0 });
+}).singleton();
+
 var update = _.debounce(updateImmediate, 100);
+
+tbone.createView('graph', function () {
+    graph.reset(T('data.objects'));
+});
+
+tbone.render($('[tbone]'));
 
 function receive(event) {
     // respond({ msg: 'received ' + event.msg });
-    // document.body.textContent = JSON.stringify(event);
     if (event.reload) {
         console.log('BBVis: Reloading.');
         objs = {};
@@ -104,5 +133,4 @@ function receive(event) {
     } else if (event.ping) {
         graph.ping(event.id);
     }
-
 }
