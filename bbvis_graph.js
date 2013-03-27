@@ -299,7 +299,8 @@ function createGraph(opts) {
             .classed("link", true)
             .each(function(d) { d.el = this; });
 
-        var nodeDelta = selectModels().data(visibleNodes, function(d) { return d.id; });
+        var nodeDelta = selectModels()
+            .data(visibleNodes, function(d) { return d.id; });
         nodeDelta.exit()
             .each(function(d) {
                 $(this).tooltip('destroy');
@@ -315,6 +316,7 @@ function createGraph(opts) {
             .on('mouseover', mousein)
             .on('mouseout', mouseout)
             .on('click', click)
+            .attr("transform", loc)
             .each(function(d) { d.el = this; });
 
         nodeDelta
@@ -322,7 +324,6 @@ function createGraph(opts) {
                 return 'unping node node-' + d.id + (d.waiting ? ' waiting' : '') +
                     ' ' + (d.isView ? 'view' : 'model');
             })
-            .attr("transform", loc)
             .attr("d", function(d) {
                 // Draw a rounded rectangle.
                 var path;
@@ -383,10 +384,10 @@ function createGraph(opts) {
         textDelta.enter().append("text")
             .attr('text-anchor', 'middle')
             .attr("y", ".28em")
+            .attr("transform", loc)
             .each(function(d) { d.textel = this; });
 
         selectText()
-            .attr("transform", loc)
             .text(function(d) { return d.text; });
 
 

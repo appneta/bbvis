@@ -95,7 +95,7 @@ function updateImmediate() {
 }
 
 tbone.createModel('info', function () {
-    return _.reduce(active, function(memo, obj) {
+    return _.reduce(T('data.objects'), function(memo, obj) {
         if (obj.isActive) {
             if (obj.isView) {
                 memo.numViews++;
@@ -106,8 +106,8 @@ tbone.createModel('info', function () {
                 var listener = objs[listenerid];
                 return listener ? num + (listener.isActive ? 1 : 0) : 0;
             }, 0);
-            return memo;
         }
+        return memo;
     }, { numViews: 0, numModels: 0, numLinks: 0 });
 }).singleton();
 
