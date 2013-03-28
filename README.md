@@ -7,8 +7,13 @@ between complex applications with many interdependent models and views.
 
 <center><a href="http://imgur.com/zzefiGr.png" target="_new"><img src="http://imgur.com/zzefiGr.png" width="400px"></a></center>
 
-BBVis was built specifically for use with TBone, but should work with regular
-Backbone apps within the limitations below.
+Check out these short silent films on youtube of BBVis strutting its stuff:
+- [BBVis w/ TodoMVC](http://www.youtube.com/watch?v=-bJJfjFxnH4)
+- [BBVis w/ AppNeta TraceView](http://www.youtube.com/watch?v=XXJDGRNQx3U)
+
+BBVis was built specifically for use with [TBone](https://github.com/appneta/tbone),
+but should work with regular Backbone apps that either use `listenTo` instead of `on`
+or that pass model/view context with `on` bindings.
 
 ## Installation
 
@@ -23,7 +28,7 @@ Backbone apps within the limitations below.
 There are still some fairly jagged edges, but try these out to see bbvis in action:
 
 - http://tbonejs.org/
-- http://addyosmani.github.com/todomvc/architecture-examples/backbone/
+- http://todomvc.com/architecture-examples/backbone/
 - http://www.dbpatterns.com/documents/507d2e6e89cbad2046a3e1f0
 
 The screenshot above is from our web performance app at
