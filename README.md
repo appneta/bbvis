@@ -29,14 +29,10 @@ There are still some fairly jagged edges, but try these out to see bbvis in acti
 The screenshot above is from our web performance app at
 http://www.appneta.com/application-performance-management/
 
-## TODO
-
-- View render highlighting is not yet imported from pre-extension implementation.
-
 ## Limitations
 
 - BBVis will not be able to understand connections between objects unless the
-  context is specified in Backbone .on() calls.
+  context is specified in Backbone .on() calls.  Use .listenTo() instead.
 - BBVis may not be able to detect all your models and views if they are
   created & bound in the same script as Backbone.  BBVis attempts to instrument
   Backbone after every script on a page loads.
@@ -49,6 +45,6 @@ implementation by [Chris Pettitt](https://github.com/cpettitt).
 
 ## License
 
-Copyright (c) 2012 Dan Tillberg, AppNeta
+Copyright (c) 2012-2013 Dan Tillberg, AppNeta
 
 BBVis is freely redistributable under the MIT License.  See LICENSE for details.
