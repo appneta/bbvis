@@ -39,8 +39,8 @@ http://www.appneta.com/application-performance-management/
 
 ## Acknowledgements
 
-In addition to JQuery, D3, Backbone, Underscore, and Bootstrap, BBVis includes a
-fantastic [Dagre](https://github.com/cpettitt/dagre) directed graph layout
+In addition to JQuery, D3, Backbone (duh), Underscore, and Bootstrap, BBVis includes
+a fantastic [Dagre](https://github.com/cpettitt/dagre) directed graph layout
 implementation by [Chris Pettitt](https://github.com/cpettitt).
 
 ## License
