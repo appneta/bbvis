@@ -75,7 +75,7 @@ path.link.hover-upstream, path.link.hover-downstream {
   stroke-opacity: 1;
 }
 
-.node.unping {
+.anim {
   -webkit-transition: all 1s linear;
   -moz-transition: all 1s linear;
   -o-transition: all 1s linear;

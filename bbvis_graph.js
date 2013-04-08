@@ -29,24 +29,16 @@ function createGraph(opts) {
         onHover: function () {}
     }, opts);
 
-    var RADIUS = 10;
-
     var links = {};
     var linksByNode = {};
     var linksCount = {};
     var linksRevCount = {};
-    var linksList = [];
     var nodes = {};
-    var nodesList = [];
-    var circlesList = [];
-    var squaresList = [];
 
     var layout = dagre.layout()
         .nodeSep(8)
         .edgeSep(4)
-        .rankSep(10)
-        .nodes(nodesList)
-        .edges(linksList);
+        .rankSep(10);
 
     var svg = d3.select(opts.el).append("svg:svg")
         .classed('tbonevis', true);
@@ -132,150 +124,75 @@ function createGraph(opts) {
         selectLinks().transition().duration(500).attr("d", linkloc);
         selectModels().transition().duration(500).attr("transform", loc);
         selectText().transition().duration(500).attr("transform", loc);
-        // var $vis = $('div.tbonevis');
-        // var visoffset = $vis.offset();
-        // var bodyoffset = $('html').offset();
-        // square().each(function(d) {
-        //     function getcss($el) {
-        //         var offset = $el.offset();
-        //         return {
-        //             top: offset ? offset.top - bodyoffset.top : 0,
-        //             left: offset ? offset.left - bodyoffset.left : 0,
-        //             width: $el.outerWidth(),
-        //             height: $el.outerHeight(),
-        //             display: (offset && (offset.top || offset.left)) ? 'block' : 'none'
-        //         };
-        //     }
-        //     var $el = d.obj.$el;
-        //     if ($el && $el.length) {
-        //         var css = getcss($el);
-        //         if (!css.height) {
-        //             var $child = $el.children().eq(0);
-        //             var altcss = getcss($child);
-        //             if (altcss.height) {
-        //                 css = altcss;
-        //             }
-        //         }
-        //         $(this).css(css);
-        //         d.X = -100; //css.left + css.width * 0.5 - visoffset.left;
-        //         // if (d.X < -100) { d.X = -100; }
-        //         d.Y = css.top + css.height * 0.5 - visoffset.top;
-        //     }
-        // });
-
     }
     var refreshLocs = _.debounce(refreshLocsNow, 10);
 
-    function getNodeElements(node) {
-        return node ? [ node.el, node.textel ] : [];
-    }
+    T(function () {
+        var visibleLinks = T('visible.links') || [];
+        var id = T('hoveredId');
+        selectLinks()
+            .classed('hover-downstream', function (link) {
+                return link.source.id === id;
+            })
+            .classed('hover-upstream', function (link) {
+                return link.target.id === id;
+            });
 
-    function getListenerViews(node) {
-        return _.chain(tbone.getListeners(node.obj)).filter(function(obj) {
-            return obj.context && obj.context.isView;
-        }).map(function(obj) { return obj.context; }).value();
-    }
-
-    function getListenerViewElements(node) {
-        return _.chain(getListenerViews(node)).map(function(view) {
-            var d = nodes[view.tboneid];
-            return d && d.visible ? getNodeElements(d) : [];
-        }).flatten().value();
-    }
-
-    var hoverDownstream = [];
-    var hoverUpstream = [];
-    var pingDownstream = [];
-    var hovered = [];
+        var nodesDownstream = _.reduce(visibleLinks, function (memo, link) {
+            if (link.source.id === id) {
+                memo[link.target.id] = true;
+            }
+            return memo;
+        }, {});
+        var nodesUpstream = _.reduce(visibleLinks, function (memo, link) {
+            if (link.target.id === id) {
+                memo[link.source.id] = true;
+            }
+            return memo;
+        }, {});
+        selectModels()
+            .classed('anim', false)
+            .classed('hover-downstream', function (node) {
+                return nodesDownstream[node.id];
+            })
+            .classed('hover-upstream', function (node) {
+                return nodesUpstream[node.id];
+            })
+            .classed('hover', function (node) {
+                return node.id === id;
+            });
+    });
 
     function mousein(node) {
-        var linksDownstream = _.filter(visibleLinks, function (link) { return link.source === node; });
-        var nodesDownstream = _.uniq(_.map(linksDownstream, function (link) { return link.target; }));
-        hoverDownstream = _.pluck(linksDownstream, 'el').concat(_.flatten(_.map(nodesDownstream, getNodeElements)));
-        var linksUpstream = _.filter(visibleLinks, function (link) { return link.target === node; });
-        var nodesUpstream = _.uniq(_.map(linksUpstream, function (link) { return link.source; }));
-        hoverUpstream = _.pluck(linksUpstream, 'el').concat(_.flatten(_.map(nodesUpstream, getNodeElements)));
-        // pingDownstream = getListenerViewElements(node);
-        // _.each(pingDownstream, function(el) {
-        //     removeClass(el, 'unping');
-        //     addClass(el, 'ping');
-        // });
-        _.each(hoverDownstream, function(el) {
-            removeClass(el, 'unping');
-            addClass(el, 'hover-downstream');
-        });
-        _.each(hoverUpstream, function(el) {
-            removeClass(el, 'unping');
-            addClass(el, 'hover-upstream');
-        });
-        hovered = getNodeElements(node);
-        _.each(hovered, function(el) {
-            removeClass(el, 'unping');
-            addClass(el, 'hover');
-        });
+        T('hoveredId', node.id);
         opts.onHover(node.id);
     }
 
     function mouseout(node) {
-        _.each(pingDownstream, function(el) {
-            removeClass(el, 'ping');
-        });
-        _.each(hoverDownstream, function(el) {
-            removeClass(el, 'hover-downstream');
-        });
-        hoverDownstream = [];
-        _.each(hoverUpstream, function(el) {
-            removeClass(el, 'hover-upstream');
-        });
-        hoverUpstream = [];
-        _.each(hovered, function(el) {
-            removeClass(el, 'hover');
-        });
-        hovered = [];
+        T('hoveredId', null);
         opts.onHover(null);
     }
 
-    var clicked;
-    var oldClickedText;
-    function updateClickedText() {
-        var data = clicked && clicked.data ? JSON.parse(clicked.data) : null;
-        var noDataMsg = "select a model to see its data";
-        var newText = data === null ? noDataMsg : JSON.stringify(data, null, 2);
-        if (oldClickedText !== newText) {
-            oldClickedText = newText
-            $('#inspect').text(newText);
-        }
-    }
+    T(function () {
+        $('#inspect').text(T.text('selectedNodeText'));
+    });
+    T(function () {
+        var id = T('selectedId');
+        selectModels()
+            .classed('selected', function (node) {
+                return node.id === id;
+            });
+    });
+
     function click(node) {
-        var oldClicked = clicked ? getNodeElements(clicked) : [];
-        _.each(oldClicked, function(el) {
-            removeClass(el, 'selected');
-        });
-        clicked = node === clicked ? null : node;
-        updateClickedText();
-        var newClicked = clicked ? getNodeElements(clicked) : [];
-        _.each(newClicked, function(el) {
-            addClass(el, 'selected');
-        });
+        T('selectedId', node.id === T('selectedId') ? null : node.id);
     }
 
-    var objects = [];
-    var visibleNodes = [];
-    var activeModels = [];
-    var activeViews = [];
-    var visibleLinks = [];
-
-    var restart = _.debounce(function() {
-        _.each(visibleNodes, function(d) {
-            d.viewListeners = _.reduce(d.listeners, function(list, listenerid) {
-                var listener = objects[listenerid];
-                return list.concat(listener && listener.isView ? [ listener ] : []);
-            }, []);
-            d.text = ' ' + d.name + (d.viewListeners.length ? ' (' + d.viewListeners.length + ')' : '') + ' ';
-            d.textwidth = Math.max(0, textWidth(d.text) - RADIUS); // - RADIUS just gives a little room for rounded corners
-            d.width = d.textwidth + 4 + RADIUS * 2;
-            d.height = 4 + RADIUS * 2;
-        });
+    T(function() {
+        T('screen.width');
+        T('screen.height');
+        var visibleLinks = T('visible.links') || [];
+        var visibleNodes = T('visible.nodes') || [];
 
         layout.nodes(visibleNodes).edges(visibleLinks);
         layout.run();
@@ -296,17 +213,13 @@ function createGraph(opts) {
         linksDelta.exit().classed("remove", true).transition().delay(1000).remove();
         linksDelta.enter().append("path")
             .attr("d", linkloc)
-            .classed("link", true)
-            .each(function(d) { d.el = this; });
+            .classed("link", true);
 
         var nodeDelta = selectModels()
             .data(visibleNodes, function(d) { return d.id; });
         nodeDelta.exit()
             .each(function(d) {
                 $(this).tooltip('destroy');
-                if (clicked === d) {
-                    clicked = null;
-                }
             })
             .classed("remove", true)
             .transition()
@@ -316,18 +229,17 @@ function createGraph(opts) {
             .on('mouseover', mousein)
             .on('mouseout', mouseout)
             .on('click', click)
-            .attr("transform", loc)
-            .each(function(d) { d.el = this; });
+            .attr("transform", loc);
 
         nodeDelta
             .attr('class', function(d) {
-                return 'unping node node-' + d.id + (d.waiting ? ' waiting' : '') +
+                return 'anim node node-' + d.id + (d.waiting ? ' waiting' : '') +
                     ' ' + (d.isView ? 'view' : 'model');
             })
             .attr("d", function(d) {
-                // Draw a rounded rectangle.
                 var path;
                 if (d.isView) {
+                    // Draw a rectangle.
                     path = (
                         "M -W -R " +
                         "L -W R " +
@@ -336,6 +248,7 @@ function createGraph(opts) {
                         "L -W -R"
                     );
                 } else {
+                    // Draw a rounded rectangle.
                     path = (
                         "M -w -R" +
                         "A R R 0 0 0 -w R" +
@@ -374,90 +287,31 @@ function createGraph(opts) {
                 });
             });
 
-        // square().remove();
-        // square().data(squaresList).enter().append('div')
-        //     .attr('class', function(d) { return 'unping tbonevis-view view node node-' + d.name; })
-        //     .each(function(d) { d.el = this; });
-
         var textDelta = selectText().data(visibleNodes, function(d) { return d.id; });
         textDelta.exit().classed("remove", true).transition().delay(1000).remove();
         textDelta.enter().append("text")
             .attr('text-anchor', 'middle')
             .attr("y", ".28em")
-            .attr("transform", loc)
-            .each(function(d) { d.textel = this; });
+            .attr("transform", loc);
 
         selectText()
             .text(function(d) { return d.text; });
 
-
-        // svg.attr('height', function() {
-        //     return _.reduce(nodesList, function(memo, node) {
-        //         return Math.max(memo, node.dagre.y + node.height);
-        //     }, 0);
-        // });
-
         refreshLocsNow();
-
-        updateClickedText();
-    }, 200);
-
-    var textWidths = {};
-    function textWidth(text) {
-        if (!textWidths[text]) {
-            var $el = $('<span>').text(text).addClass('tbonevis-width-test').appendTo('body');
-            textWidths[text] = $el.width();
-            $el.remove();
-        }
-        return textWidths[text];
-    }
-
-    function getNode(_node) {
-        var name = _node.name;
-        var node = nodes[name];
-        if (!node) {
-            nodes[name] = node = _.clone(_node);
-            nodesList.push(node);
-            linksByNode[name] = [];
-            (node.type.match(/model/) ? circlesList : squaresList).push(node);
-        }
-        return node;
-    }
-
-    $(window).resize(function() {
-        restart();
     });
 
     return {
-        reset: function(objs) {
-            objects = objs;
-            visibleNodes = _.filter(objs, function (node) { return node.isVisible; });
-            visibleLinks = _.flatten(_.map(visibleNodes, function(node) {
-                return _.map(node.listeners || [], function(listenerid) {
-                    var listener = objs[listenerid];
-                    return listener && listener.isVisible ?
-                        [{ source: node, target: listener }] : [];
-                });
-            }));
-            restart();
-        },
-        updateText: function () {
-            updateClickedText();
-        },
         ping: function(id) {
-            // getNode(opts).waiting = false;
-            // refreshLocs();
             var $el = $('.node-' + id);
             removeClass($el[0], 'waiting');
-            removeClass($el[0], 'unping');
+            removeClass($el[0], 'anim');
             addClass($el[0], 'ping');
             setTimeout(function() {
                 setTimeout(function() {
-                    addClass($el[0], 'unping');
+                    addClass($el[0], 'anim');
                     removeClass($el[0], 'ping');
                 }, 400);
             }, 1);
-            updateClickedText();
         }
     };
 }

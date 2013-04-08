@@ -14,14 +14,14 @@
     }
 
     window.bbvis_getmessages = function () {
-        console.log('sending ' + messages.length + ' messages');
+        // console.log('sending ' + messages.length + ' messages');
         var msgs = messages;
         messages = [];
         return msgs;
     };
 
     window.bbvis_send = function (msg) {
-        console.log('received', msg);
+        // console.log('received', msg);
         receive(msg);
     };
 
@@ -37,7 +37,7 @@
             console.log('BBVis: pause.');
         }
         if (msg.hover !== undefined) {
-            console.log('hover ' + msg.hover);
+            // console.log('hover ' + msg.hover);
             hover(msg.hover);
         }
     }
@@ -489,7 +489,7 @@
                 if (getObjParallel(this).waiting != null) {
                     getObjParallel(this).waiting = false;
                 }
-                getObjParallel(this).data = this.toJSON();
+                getObjParallel(this).data = this.attributes;
                 getObjParallel(this).ping();
                 setDirty(this);
             }
