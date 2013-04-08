@@ -43,15 +43,38 @@
     }
 
     var initted = false;
-    document.addEventListener('load', function instrumentBackbone(ev) {
-        if (window.Backbone && !initted) {
-            document.removeEventListener('load', instrumentBackbone);
+    var bbInitted = false;
+    var tboneInitted = false;
+    function tryInit () {
+        if (!initted) {
             init();
-            console.log('BBVis: Backbone instrumented.');
             initted = true;
             send({ loaded: true });
         }
-    }, true);
+    }
+
+    function instrumentBackbone () {
+        if (!bbInitted && window.Backbone) {
+            tryInit();
+            bbInitted = true;
+            document.removeEventListener('load', instrumentBackbone);
+            wrapstuff(Backbone.Model.prototype, Backbone.Collection.prototype,
+                      Backbone.View.prototype);
+            console.log('BBVis: Backbone instrumented.');
+        }
+    }
+    document.addEventListener('load', instrumentBackbone, true);
+
+    function instrumentTBone () {
+        if (!tboneInitted) {
+            tryInit();
+            tboneInitted = true;
+            window.removeEventListener('tbone_loaded', instrumentTBone);
+            wrapstuff(tbone.models.base, tbone.collections.base, tbone.views.base);
+            console.log('BBVis: TBone instrumented.');
+        }
+    }
+    window.addEventListener('tbone_loaded', instrumentTBone, false);
 
     function highlight($els, opts) {
         if ($els && $els.offset && $els.outerHeight && $els.outerWidth && $els.map) {
@@ -404,33 +427,47 @@
         // on initial load.
         guessNameProperties = _.debounce(guessNameProperties, 1000, true);
 
-        Backbone.Model.prototype.bbvistype = 'model';
-        Backbone.View.prototype.bbvistype = 'view';
-        Backbone.Collection.prototype.bbvistype = 'collection';
+        window.addEventListener('message', function(msg) {
+            var bbvisMsg = msg && msg.data && msg.data.bbvis;
+            if (bbvisMsg) {
+                receive(bbvisMsg);
+            }
+        }, false);
+
+    }
+
+    function wrapstuff(model, collection, view) {
+        model.bbvistype = 'model';
+        collection.bbvistype = 'collection';
+        view.bbvistype = 'view';
 
         function wrap(proto, method, wrapperBefore, wrapperAfter) {
-            var orig = proto[method];
-            proto[method] = function() {
-                wrapperBefore.apply(this, arguments);
-                var rval = orig.apply(this, arguments);
-                if (wrapperAfter) {
-                    wrapperAfter.call(this, rval);
+            if (proto) {
+                var orig = proto[method];
+                if (orig) {
+                    proto[method] = function() {
+                        wrapperBefore.apply(this, arguments);
+                        var rval = orig.apply(this, arguments);
+                        if (wrapperAfter) {
+                            wrapperAfter.call(this, rval);
+                        }
+                        return rval;
+                    };
                 }
-                return rval;
-            };
+            }
         }
 
-        wrap(Backbone.Model.prototype, 'on', function(event, cb, context) {
+        wrap(model, 'on', function(event, cb, context) {
             if (getObj(this)) { setDirty(getObj(this)); }
             if (getObj(context)) { add(getObj(context)); }
         });
 
-        wrap(Backbone.Model.prototype, 'off', function(event, cb, context) {
+        wrap(model, 'off', function(event, cb, context) {
             if (getObj(this)) { setDirty(getObj(this)); }
             if (getObj(context)) { add(getObj(context)); }
         });
 
-        wrap(Backbone.Model.prototype, 'fetch', function () {
+        wrap(model, 'fetch', function () {
             if (getObj(this)) {
                 getObjParallel(this).waiting = true;
                 // console.log('fetching ' + getId(this));
@@ -438,7 +475,7 @@
             }
         });
 
-        wrap(Backbone.Model.prototype, 'set', function () {}, function () {
+        wrap(model, 'set', function () {}, function () {
             if (getObj(this)) {
                 if (getObjParallel(this).waiting != null) {
                     getObjParallel(this).waiting = false;
@@ -450,7 +487,7 @@
         });
 
         // Use the call to _configure during View construction to wrap render
-        wrap(Backbone.View.prototype, '_configure', function() {
+        wrap(view, '_configure', function() {
             // on render, mark everything dirty, because views could have changed and active flags could all be obsolete
             wrap(this, 'render', function() {
                 if (getObj(this)) { getObjParallel(this).ping(); }
@@ -458,12 +495,6 @@
             });
         });
 
-        window.addEventListener('message', function(msg) {
-            var bbvisMsg = msg && msg.data && msg.data.bbvis;
-            if (bbvisMsg) {
-                receive(bbvisMsg);
-            }
-        }, false);
     }
 
 }());
