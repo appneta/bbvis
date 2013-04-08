@@ -123,11 +123,7 @@
         var listeners = [];
         function add(context) {
             var listener = getObj(context);
-            /**
-             * Don't publish event binding of collections to their
-             * own models; this happens automatically in backbone.
-             **/
-            if (listener && listener !== self.collection) {
+            if (listener) {
                 listeners.push(listener);
             }
         }
@@ -398,21 +394,34 @@
             num++;
             var obj = objs[id];
             var parallel = getObjParallel(obj);
-            var listeners = _.map(getListeners(obj), getId);
+            var listeners = getListeners(obj);
+
+            /**
+             * If the only binding for a model is from its own collection,
+             * don't publish that; this happens automatically in Backbone.
+             **/
+            if (listeners.length === 1 && listeners[0] === obj.collection) {
+                listeners = [];
+            }
+
+            var listenerIds = _.map(listeners, getId);
+            var hasListeners = listeners.length > 0;
+
             // Only send the new info if this is a view, if this has listeners,
             // or if this no longer has any listeners.
-            parallel.sendEnabled = (
-                (obj.bbvistype === 'view') ||
-                (listeners.length > 0) ||
-                (parallel.hadListeners && listeners.length === 0));
+            parallel.sendEnabled =
+                obj.bbvistype === 'view' ||
+                parallel.hadListeners ||
+                hasListeners;
+
             if (parallel.sendEnabled) {
-                listeners.sort();
+                listenerIds.sort();
                 var force = dirty[id] === true;
-                if (post(obj, { listeners: listeners }, force)) {
+                if (post(obj, { listeners: listenerIds }, force)) {
                     numSent++;
                 }
             }
-            parallel.hadListeners = listeners.length > 0;
+            parallel.hadListeners = hasListeners;
             cleaned.push(id);
         }
         for (var i = 0; i < cleaned.length; i++) {
