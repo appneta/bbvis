@@ -1,5 +1,7 @@
 
 (function () {
+    var SEND_ALL = false;
+    var HIDE_TBONE_ROOT = false; // temp kludge for drawing pretty pictures
 
     if (!String.prototype.toJSON) {
         String.prototype.toJSON = function () {
@@ -58,8 +60,9 @@
             tryInit();
             bbInitted = true;
             document.removeEventListener('load', instrumentBackbone);
-            wrapstuff(Backbone.Model.prototype, Backbone.Collection.prototype,
-                      Backbone.View.prototype);
+            wrapmodel(Backbone.Model.prototype);
+            wrapcollection(Backbone.Collection.prototype);
+            wrapview(Backbone.View.prototype);
             console.log('BBVis: Backbone instrumented.');
         }
     }
@@ -70,7 +73,13 @@
             tryInit();
             tboneInitted = true;
             window.removeEventListener('tbone_loaded', instrumentTBone);
-            wrapstuff(tbone.models.base, tbone.collections.base, tbone.views.base);
+            wrapmodel(tbone.models.base);
+            wrapmodel(tbone.models.bound);
+            wrapmodel(tbone.models.async);
+            wrapmodel(tbone.models.ajax);
+            wrapmodel(tbone);
+            wrapcollection(tbone.collections.base);
+            wrapview(tbone.views.base);
             console.log('BBVis: TBone instrumented.');
         }
     }
@@ -119,6 +128,14 @@
         }
     }
 
+    function isFunction (x) {
+        return typeof x === 'function';
+    }
+
+    function isQueryable(x) {
+        return !!(x && typeof x['query'] === 'function');
+    }
+
     function getListeners(self) {
         var listeners = [];
         function add(context) {
@@ -143,6 +160,26 @@
                 add(ev.context);
             }
         });
+        // TBone-native:
+        if (isQueryable(self) && isFunction(self)) {
+            var stack = [ self['_events'] ];
+            var next, callbacks, k;
+
+            while (!!(next = stack.pop())) {
+                for (k in next) {
+                    if (k === '') {
+                        callbacks = next[''];
+                        for (var i = 0; i < next[''].length; i++) {
+                            if (callbacks[i].context) {
+                                listeners.push(callbacks[i].context);
+                            }
+                        }
+                    } else {
+                        stack.push(next[k]);
+                    }
+                }
+            }
+        }
         return _.uniq(listeners);
     }
 
@@ -261,18 +298,15 @@
 
     function getId(obj) {
         obj = getObj(obj);
-        if (!obj.__bbvisid__) {
+        if (obj && !obj.__bbvisid__) {
             var id = obj.__bbvisid__ = nextId++;
             if (!objs[id]) {
                 objs[id] = obj;
-                if (nameProperties !== undefined) {
-                    guessNameProperties();
-                }
             }
             setDirty(obj);
             // If we've already guessed names before, maybe try again
         }
-        return obj.__bbvisid__;
+        return obj ? obj.__bbvisid__ : null;
     }
 
     function getObjParallel(obj) {
@@ -283,70 +317,8 @@
         return objParallels[id];
     }
 
-    var guessNameProperties = function() {
-        setAllDirty();
-        var possiblities = {};
-        var realObjs = _.map(_.values(objs), getObj);
-        _.each(realObjs, function(obj) {
-            for (var k in obj) {
-                if (typeof obj[k] === 'string') {
-                    if (!possiblities[k]) {
-                        possiblities[k] = [];
-                    }
-                    possiblities[k].push(obj[k]);
-                }
-            }
-        });
-        delete possiblities.cid;
-        delete possiblities.bbvistype;
-        var props = _.keys(possiblities);
-        var okayNames = _.filter(props, function (prop) {
-            return _.uniq(possiblities[prop]).length > 1;
-        });
-        var bestNames = _.sortBy(okayNames, function (prop) {
-            return _.uniq(possiblities[prop]).length;
-        })
-        bestNames.reverse();
-        bestNames.push('cid'); // fall back to cid if there's nothing unique
-        nameProperties = bestNames;
-    };
-
-    var nameProperties;
     function getName(o) {
-        if (nameProperties === undefined) {
-            guessNameProperties();
-        }
-
-        var keys = 'name Name title Title id Id ID'.split(' ');
-        var strKey = _.find(nameProperties, function (key) {
-            return typeof o[key] === 'string';
-        });
-        var name = 'no name';
-        if (strKey) {
-            name = o[strKey];
-        } else {
-            var fnKey = _.find(keys, function (key) {
-                return typeof o[key] === 'function';
-            });
-            if (fnKey) {
-                name = o[fnKey].call(o);
-            }
-        }
-        var id;
-        if (o.get) {
-            var arg;
-            var args = 'name Name title Title id Id ID'.split(' ');
-            if (o.idAttribute != null) {
-                args.unshift(o.idAttribute);
-            }
-            while (id == null && (arg = args.shift())) {
-                id = o.get(arg);
-            }
-            if (id != null) {
-                name = name + '#' + id;
-            }
-        }
-        return name;
+        return (o && o.Name) || 'no name';
     }
 
     function setDirty(obj, force) {
@@ -410,9 +382,14 @@
             // Only send the new info if this is a view, if this has listeners,
             // or if this no longer has any listeners.
             parallel.sendEnabled =
+                SEND_ALL ||
                 obj.bbvistype === 'view' ||
                 parallel.hadListeners ||
                 hasListeners;
+
+            if (obj.tboneid === 1 && HIDE_TBONE_ROOT) {
+                parallel.sendEnabled = false;
+            }
 
             if (parallel.sendEnabled) {
                 listenerIds.sort();
@@ -431,11 +408,6 @@
     }
 
     function init() {
-
-        // We can't do this until now because underscore won't be available
-        // on initial load.
-        guessNameProperties = _.debounce(guessNameProperties, 1000, true);
-
         window.addEventListener('message', function(msg) {
             var bbvisMsg = msg && msg.data && msg.data.bbvis;
             if (bbvisMsg) {
@@ -445,35 +417,30 @@
 
     }
 
-    function wrapstuff(model, collection, view) {
-        model.bbvistype = 'model';
-        collection.bbvistype = 'collection';
-        view.bbvistype = 'view';
-
-        function wrap(proto, method, wrapperBefore, wrapperAfter) {
-            if (proto) {
-                var orig = proto[method];
-                if (orig) {
-                    proto[method] = function() {
-                        wrapperBefore.apply(this, arguments);
-                        var rval = orig.apply(this, arguments);
-                        if (wrapperAfter) {
-                            wrapperAfter.call(this, rval);
-                        }
-                        return rval;
-                    };
-                }
+    function wrap(proto, method, wrapperBefore, wrapperAfter) {
+        if (proto) {
+            var orig = proto[method];
+            if (orig) {
+                proto[method] = function() {
+                    wrapperBefore.apply(this, arguments);
+                    var rval = orig.apply(this, arguments);
+                    if (wrapperAfter) {
+                        wrapperAfter.call(this, rval);
+                    }
+                    return rval;
+                };
             }
         }
+    }
 
-        wrap(model, 'on', function(event, cb, context) {
-            if (getObj(this)) { setDirty(getObj(this)); }
-            if (getObj(context)) { add(getObj(context)); }
-        });
+    function wrapmodel (model) {
+        model.bbvistype = 'model';
 
-        wrap(model, 'off', function(event, cb, context) {
-            if (getObj(this)) { setDirty(getObj(this)); }
-            if (getObj(context)) { add(getObj(context)); }
+        _.each(['on', 'off'], function (op) {
+            wrap(model, op, function(event, cb, context) {
+                if (getObj(this)) { setDirty(getObj(this)); }
+                if (getObj(context)) { add(getObj(context)); }
+            });
         });
 
         wrap(model, 'fetch', function () {
@@ -484,16 +451,30 @@
             }
         });
 
-        wrap(model, 'set', function () {}, function () {
-            if (getObj(this)) {
-                if (getObjParallel(this).waiting != null) {
-                    getObjParallel(this).waiting = false;
+        _.each(['set', 'query', 'push'], function (op) {
+            wrap(model, op, function (prop, data) {
+                if (data && isQueryable(data)) {
+                    add(getObj(data));
                 }
-                getObjParallel(this).data = this.attributes;
-                getObjParallel(this).ping();
-                setDirty(this);
-            }
+            }, function () {
+                if (getObj(this)) {
+                    if (getObjParallel(this).waiting != null) {
+                        getObjParallel(this).waiting = false;
+                    }
+                    getObjParallel(this).data = this.attributes;
+                    getObjParallel(this).ping();
+                    setDirty(this);
+                }
+            });
         });
+    }
+
+    function wrapcollection (collection) {
+        collection.bbvistype = 'collection';
+    }
+
+    function wrapview (view) {
+        view.bbvistype = 'view';
 
         // Use the call to _configure during View construction to wrap render
         wrap(view, '_configure', function() {
@@ -503,7 +484,6 @@
                 setAllViewsDirty();
             });
         });
-
     }
 
 }());

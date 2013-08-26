@@ -118,7 +118,9 @@ T('visible', function () {
                 var listener = objs[listenerid];
                 return list.concat(listener && listener.isView ? [ listener ] : []);
             }, []);
-            var text = ' ' + node.name + (viewListeners.length ? ' (' + viewListeners.length + ')' : '') + ' ';
+            var text = ' ' + node.name
+                // + (viewListeners.length ? ' (' + viewListeners.length + ')' : '')
+                + ' ';
             var textwidth = Math.max(0, textWidth(text) - RADIUS);
             return _.extend({}, node, {
                 viewListeners: viewListeners,

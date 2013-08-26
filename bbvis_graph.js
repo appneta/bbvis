@@ -36,7 +36,7 @@ function createGraph(opts) {
     var nodes = {};
 
     var layout = dagre.layout()
-        .nodeSep(8)
+        .nodeSep(4)
         .edgeSep(4)
         .rankSep(10);
 
