@@ -169,10 +169,8 @@
                 for (k in next) {
                     if (k === '') {
                         callbacks = next[''];
-                        for (var i = 0; i < next[''].length; i++) {
-                            if (callbacks[i].context) {
-                                listeners.push(callbacks[i].context);
-                            }
+                        for (var contextId in callbacks) {
+                            listeners.push(callbacks[contextId]);
                         }
                     } else {
                         stack.push(next[k]);
@@ -414,7 +412,6 @@
                 receive(bbvisMsg);
             }
         }, false);
-
     }
 
     function wrap(proto, method, wrapperBefore, wrapperAfter) {
