@@ -341,10 +341,6 @@
         }
     }
 
-    function add(obj) {
-        getId(obj);
-    }
-
     function clean() {
         cleanTimer = null;
         if (paused) {
@@ -436,8 +432,12 @@
         _.each(['on', 'off'], function (op) {
             wrap(model, op, function(event, cb, context) {
                 if (getObj(this)) { setDirty(getObj(this)); }
-                if (getObj(context)) { add(getObj(context)); }
+                if (getObj(context)) { getId(getObj(context)); }
             });
+        });
+
+        wrap(model, 'initialize', function () {
+            if (getObj(this)) { getId(getObj(this)); }
         });
 
         wrap(model, 'fetch', function () {
@@ -451,7 +451,7 @@
         _.each(['set', 'query', 'push'], function (op) {
             wrap(model, op, function (prop, data) {
                 if (data && isQueryable(data)) {
-                    add(getObj(data));
+                    getId(getObj(data));
                 }
             }, function () {
                 if (getObj(this)) {
