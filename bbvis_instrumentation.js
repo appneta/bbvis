@@ -195,7 +195,15 @@
         this.obj = getObj(obj);
         this.data = "(no data)";
 
-        this.ping = _.debounce(function () {
+        var pingTimeout;
+        this.ping = function () {
+            if (!pingTimeout) {
+                setTimeout(pingForReal, 200);
+            }
+        };
+
+        function pingForReal () {
+            pingTimeout = null;
             if (this.sendEnabled) {
                 // console.log('ping ' + this.id);
                 send({ id: this.id, ping: true });
@@ -203,7 +211,7 @@
             // if (self.obj.bbvistype === 'view' && !paused) {
             //     highlight(self.obj.$el, { opacity: 0.2, fade: 1000 });
             // }
-        }, 200);
+        }
     }
 
     var $lastHoverHighlight;
